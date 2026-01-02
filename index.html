@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Madison Luna - Work</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#ffffff;
+      --ink:#0d0d0d;
+      --muted:#6b7280; /* slate-500 */
+      --accent:#5AA7FF;
+      --grid-gap:42px;
+      --maxw:1080px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      background:var(--bg);
+      color:var(--ink);
+      font-family:"Montserrat", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      line-height:1.45;
+    }
+    a{color:inherit;text-decoration:none}
+
+    /* --- Topbar --- */
+    .topbar{
+      position:sticky;top:0;z-index:10;
+      background:rgba(255,255,255,.85);
+      backdrop-filter:saturate(140%) blur(8px);
+      border-bottom:1px solid #eaeaea;
+    }
+    .nav{
+      max-width:var(--maxw);
+      margin:0 auto;
+      padding:18px 24px;
+      display:flex;align-items:center;justify-content:space-between;
+    }
+    .brand{letter-spacing:.35em;font-weight:600}
+    .menu{display:flex;gap:26px;align-items:center;font-size:14px;color:var(--muted)}
+    .menu a{position:relative}
+    .menu a.active{color:var(--ink);font-weight:600}
+    .menu a.active::after{
+      content:"";position:absolute;right:-10px;top:50%;transform:translateY(-50%) rotate(45deg);
+      width:6px;height:6px;border-right:1.5px solid var(--ink);border-bottom:1.5px solid var(--ink);
+    }
+
+    /* --- Layout --- */
+    .wrap{max-width:var(--maxw);margin:40px auto;padding:0 24px 64px}
+
+    .grid{
+      display:grid;gap:var(--grid-gap);
+      grid-template-columns:repeat(12,1fr);
+    }
+
+    /* Six-up responsive gallery */
+    .card{grid-column:span 4; display:flex; flex-direction:column; align-items:center; text-align:center;}
+    @media (max-width: 980px){.card{grid-column:span 6}}
+    @media (max-width: 640px){.card{grid-column:span 12}}
+
+    .thumb{
+      aspect-ratio: 1 / 1; /* perfect square */
+      width:100%;
+      border-radius:8px;
+      overflow:hidden;
+      position:relative;
+      box-shadow:0 10px 25px rgba(0,0,0,.06);
+      background:#f3f4f6;
+    }
+    .thumb img{width:100%;height:100%;object-fit:cover;display:block;transform:scale(1.02);transition:transform .45s ease, filter .45s ease}
+    .thumb::after{ /* subtle inner border */
+      content:"";position:absolute;inset:0;border-radius:8px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06);pointer-events:none
+    }
+
+    .card:hover .thumb img{transform:scale(1.06);filter:saturate(1.05)}
+
+    .label{
+      margin-top:14px;
+      letter-spacing:.45em;
+      color:var(--muted);
+      font-size:13px;
+      text-transform:uppercase;
+      text-align:center;
+      width:100%;
+    }
+
+    footer{max-width:var(--maxw);margin:40px auto 56px;padding:0 24px;color:#9aa1ad;font-size:13px;text-align:center;}
+  </style>
+</head>
+<body>
+  <!-- Top Navigation -->
+  <header class="topbar" role="banner">
+    <nav class="nav" aria-label="Primary">
+      <div class="brand" aria-label="Site title"><a href="index.html">MADISON</a></div>
+      <div class="menu" role="menubar">
+        <a href="index.html" role="menuitem">Work</a>
+        <a href="resume.pdf" role="menuitem">Resume</a>
+      </div>
+    </nav>
+  </header>
+
+
+<main class="wrap" id="work">
+    <section class="grid" aria-label="Portfolio categories">
+
+      <a class="card" href="latest/finished_pieces.html">
+        <figure class="thumb">
+          <img src="./finished_pieces/thumbnails/Art 103 Historical Images.jpg"/>
+        </figure>
+        <div class="label">finished_pieces</div>
+      </a>
+
+      <a class="card" href="latest/line_art.html">
+        <figure class="thumb">
+          <img src="./line_art/thumbnails/4-31.jpg"/>
+        </figure>
+        <div class="label">line_art</div>
+      </a>
+
+      <a class="card" href="latest/sketches.html">
+        <figure class="thumb">
+          <img src="./sketches/thumbnails/Daisy Sketch.jpg"/>
+        </figure>
+        <div class="label">sketches</div>
+      </a>
+
+    </section>
+</main>
+
+  <footer>© 2025 Madison Luna</footer>
+</body>
+</html>
