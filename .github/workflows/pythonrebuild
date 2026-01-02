@@ -1,0 +1,60 @@
+name: Run main.py and commit changes
+
+on:
+  push:
+    branches:
+      - "**"   # all branches
+
+permissions:
+  contents: write
+
+jobs:
+  run-and-commit:
+    # Only run for pushes made by a human / anything other than the Actions bot
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # use the built-in token so we can push commits back
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      # If you have dependencies, uncomment and adjust:
+      # - name: Install dependencies
+      #   run: |
+      #     python -m pip install --upgrade pip
+      #     if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run main.py
+        run: python3 main.py
+
+      - name: Commit and push any changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+
+          # If main.py made no changes, do nothing.
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          # Configure bot identity
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Commit everything that changed
+          git add -A
+          git commit -m "chore: apply changes from main.py"
+
+          # Push back to the same branch that triggered the workflow
+          git push origin "HEAD:${GITHUB_REF_NAME}"
