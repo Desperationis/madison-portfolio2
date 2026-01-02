@@ -222,7 +222,7 @@ class CategoryPage:
 
   <!-- Header / breadcrumb for category -->
   <section class="hero">
-    <h1 id="categoryTitle">Sketches</h1>
+    <h1 id="categoryTitle">{category.name}</h1>
   </section>
 """
 
