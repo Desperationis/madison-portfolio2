@@ -147,12 +147,12 @@ class IndexPage:
 
 class CategoryPage:
     def __init__(self, category, cwd):
-        self.header = f"""<!DOCTYPE html>
+        self.header = """<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Madison Luna - {category.name}</title>
+  <title>Madison Luna - CATEGORYNAME</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
@@ -222,9 +222,9 @@ class CategoryPage:
 
   <!-- Header / breadcrumb for category -->
   <section class="hero">
-    <h1 id="categoryTitle">{category.name}</h1>
+    <h1 id="categoryTitle">CATEGORYNAME</h1>
   </section>
-"""
+""".replace("CATEGORYNAME", category.name)
 
         self.category = category
         self.cwd = cwd
