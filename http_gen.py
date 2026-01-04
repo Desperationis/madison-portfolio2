@@ -279,7 +279,7 @@ class CategoryPage:
         for art in self.category.art_pieces:
             self.art_code += f"""
       <button class="cell tile" data-full="{no_dot_relative(self.cwd, art.path)}">
-        <img alt="Ballet dancers" src="{no_dot_relative(self.cwd, art.thumbnail_path)}">
+        <img alt="Ballet dancers" src="{no_dot_relative(self.cwd, art.get_thumbnail_p())}">
       </button>
 """
 
