@@ -102,8 +102,8 @@ class IndexPage:
     <nav class="nav" aria-label="Primary">
       <div class="brand" aria-label="Site title"><a href="index.html">MADISON</a></div>
       <div class="menu" role="menubar">
-        <a href="index.html" role="menuitem">Work</a>
-        <a href="resume.pdf" role="menuitem">Resume</a>
+        <a href="/index.html" role="menuitem">Work</a>
+        <a href="/latest/resume.pdf" role="menuitem">Resume</a>
       </div>
     </nav>
   </header>
@@ -114,7 +114,7 @@ class IndexPage:
         self.category_code = ""
 
         self.footer="""
-  <footer>© 2025 Madison Luna</footer>
+  <footer>© 2026 Madison Luna</footer>
 </body>
 </html>
 """
@@ -212,10 +212,10 @@ class CategoryPage:
   <!-- Top Navigation -->
   <header class="topbar" role="banner">
     <nav class="nav" aria-label="Primary">
-      <div class="brand" aria-label="Site title"><a href="../index.html">MADISON</a></div>
+      <div class="brand" aria-label="Site title"><a href="/index.html">MADISON</a></div>
       <div class="menu" role="menubar">
-        <a href="index.html" role="menuitem">Work</a>
-        <a href="resume.pdf" role="menuitem">Resume</a>
+        <a href="/index.html" role="menuitem">Work</a>
+        <a href="/latest/resume.pdf" role="menuitem">Resume</a>
       </div>
     </nav>
   </header>
