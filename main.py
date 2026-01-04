@@ -8,7 +8,7 @@ from http_gen import *
 FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
 
 file_handler = RotatingFileHandler(
-    "todo2.log",
+    "gen.log",
     maxBytes=5_000_000,   # 5 MB
     backupCount=3,        # keep 3 old logs
     encoding="utf-8",
@@ -33,20 +33,20 @@ cwd = Path.cwd()
 detected_categories = []
 
 for first_layer in sorted([p for p in cwd.iterdir() if p.is_dir()]):
-    if first_layer.name in [".git", "latest", "debug"]:
-        continue
-
     second_layer = next((p for p in first_layer.iterdir() if p.is_dir()), None)
 
-    if second_layer is not None and second_layer.name == "thumbnails":
-        log.info(f"Added {first_layer.name} as a category.")
-        detected_categories.append(Category(first_layer.name, first_layer, second_layer))
+    log.info(f"Added {first_layer.name} as a category.")
+    detected_categories.append(Category(first_layer.name, first_layer, second_layer))
+
+# Remove invalid folders
+detected_categories = [c for c in detected_categories if c.thumbnail_p]
 
 generated_p = cwd / "latest"
 generated_p.mkdir(parents=True, exist_ok=True)
 
 
 index = IndexPage()
+log.debug(detected_categories)
 index.set_categories(detected_categories, cwd)
 Path("index.html").write_text(index.get_content(), encoding="utf-8")
 

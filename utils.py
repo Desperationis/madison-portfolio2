@@ -21,6 +21,12 @@ class ArtPiece(DebugEasy):
     def __init__(self, path, thumbnail_path):
         self.path = path
         self.thumbnail_path = thumbnail_path
+    
+    def get_thumbnail_p(self):
+        if self.thumbnail_path:
+            return self.thumbnail_path
+
+        return self.path
 
 class Category(DebugEasy):
     IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tif", ".tiff", ".webp", ".heic", ".heif"}
@@ -42,22 +48,21 @@ class Category(DebugEasy):
             if p.is_file() and p.suffix.lower() in self.IMAGE_EXTS:
                 thumbnail_mapping[p] = None
                 name_to_key_mapping[p.name] = p
+                self.thumbnail_p = p
 
-        for p in self.second_layer_p.iterdir():
-            if p.is_file() and p.suffix.lower() in self.IMAGE_EXTS:
-                if p.name in name_to_key_mapping:
-                    k = name_to_key_mapping[p.name]
-                    thumbnail_mapping[k] = p
-                    self.thumbnail_p = p
-                    log.debug(f"Associated \"{self.name}/{p.name}\" art piece.")
-                else:
-                    log.warning(f"WARNING: \"{self.name}/{p.name}\" thumbnail was not matched with anything.")
+        if self.second_layer_p:
+            for p in self.second_layer_p.iterdir():
+                if p.is_file() and p.suffix.lower() in self.IMAGE_EXTS:
+                    if p.name in name_to_key_mapping:
+                        k = name_to_key_mapping[p.name]
+                        thumbnail_mapping[k] = p
+                        self.thumbnail_p = p
+                        log.debug(f"Associated \"{self.name}/{p.name}\" art piece.")
+                    else:
+                        log.warning(f"WARNING: \"{self.name}/{p.name}\" thumbnail was not matched with anything.")
 
         for k in thumbnail_mapping:
-            if thumbnail_mapping[k] == None:
-                log.warning(f"WARNING: \"{self.name}/{k.name}\" artwork was not matched with anything.")
-            else:
-                self.art_pieces.append(ArtPiece(k, thumbnail_mapping[k]))
+            self.art_pieces.append(ArtPiece(k, thumbnail_mapping[k]))
 
 
 def dot_relative(parent: Path, child: Path) -> str:
