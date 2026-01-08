@@ -1,1 +1,17 @@
-title: "MADISON"
+# Website Configuration
+
+# The name/brand displayed in the top left
+site_name: "MADISON"
+
+# Navigation menu items
+# Each item has a label (text shown) and url (where it links to)
+navigation:
+  - label: "Work"
+    url: "/index.html"
+  - label: "Resume"
+    url: "/latest/resume.pdf"
+
+# Footer configuration
+footer:
+  # Copyright text - year will be automatically set to current year
+  copyright: "Madison Luna"
