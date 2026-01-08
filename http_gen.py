@@ -144,10 +144,12 @@ class IndexPage:
     <section class="grid" aria-label="Portfolio categories">
 """
         for c in categories:
+            # Use the first art piece's thumbnail if available
+            category_thumb = c.art_pieces[0].get_thumbnail_p() if c.art_pieces else c.thumbnail_p
             self.category_code += f"""
       <a class="card" href="latest/{c.name}.html">
         <figure class="thumb">
-          <img src="{dot_relative(cwd, c.thumbnail_p)}"/>
+          <img src="{dot_relative(cwd, category_thumb)}"/>
         </figure>
         <div class="label">{c.name}</div>
       </a>
