@@ -1,4 +1,5 @@
 from utils import *
+import html
 import yaml
 from pathlib import Path
 
@@ -6,25 +7,48 @@ from pathlib import Path
 def load_config():
     """Load configuration from config.yaml"""
     config_path = Path(__file__).parent.parent / "config.yaml"
-    with open(config_path, 'r', encoding='utf-8') as f:
-        return yaml.safe_load(f)
+
+    if not config_path.exists():
+        raise FileNotFoundError(f"Config file not found: {config_path}")
+
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f)
+    except yaml.YAMLError as e:
+        raise ValueError(f"Failed to parse {config_path}: {e}") from e
+
+    if not isinstance(config, dict):
+        raise ValueError(f"Config file must contain a YAML mapping, got {type(config).__name__}")
+
+    required_keys = ['site_name', 'navigation', 'footer']
+    missing = [k for k in required_keys if k not in config]
+    if missing:
+        raise ValueError(f"Config missing required keys: {', '.join(missing)}")
+
+    if not isinstance(config['navigation'], list):
+        raise ValueError("Config 'navigation' must be a list of items")
+
+    if not isinstance(config['footer'], dict) or 'copyright' not in config['footer']:
+        raise ValueError("Config 'footer' must contain a 'copyright' key")
+
+    return config
 
 
 class IndexPage:
-    def __init__(self):
-        self.config = load_config()
+    def __init__(self, config):
+        self.config = config
 
         # Build navigation HTML
         nav_items_html = ""
         for item in self.config['navigation']:
-            nav_items_html += f'<a href="{item["url"]}" role="menuitem">{item["label"]}</a>\n        '
+            nav_items_html += f'<a href="{html.escape(item["url"])}" role="menuitem">{html.escape(item["label"])}</a>\n        '
 
         self.header = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{self.config['site_name']} - Work</title>
+  <title>{html.escape(self.config['site_name'])} - Work</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
@@ -116,7 +140,7 @@ class IndexPage:
   <!-- Top Navigation -->
   <header class="topbar" role="banner">
     <nav class="nav" aria-label="Primary">
-      <div class="brand" aria-label="Site title"><a href="index.html">{self.config['site_name']}</a></div>
+      <div class="brand" aria-label="Site title"><a href="index.html">{html.escape(self.config['site_name'])}</a></div>
       <div class="menu" role="menubar">
         {nav_items_html}
       </div>
@@ -129,7 +153,7 @@ class IndexPage:
         self.category_code = ""
 
         self.footer=f"""
-  <footer>© <span id="y"></span> {self.config['footer']['copyright']}</footer>
+  <footer>© <span id="y"></span> {html.escape(self.config['footer']['copyright'])}</footer>
 
   <script>
     document.getElementById('y').textContent = new Date().getFullYear();
@@ -146,12 +170,15 @@ class IndexPage:
         for c in categories:
             # Use the first art piece's thumbnail if available
             category_thumb = c.art_pieces[0].get_thumbnail_p() if c.art_pieces else c.thumbnail_p
+            thumb_src = dot_relative(cwd, category_thumb)
+            if thumb_src is None:
+                continue
             self.category_code += f"""
-      <a class="card" href="latest/{c.name}.html">
+      <a class="card" href="latest/{html.escape(c.name)}.html">
         <figure class="thumb">
-          <img src="{dot_relative(cwd, category_thumb)}"/>
+          <img src="{html.escape(thumb_src)}" alt="{html.escape(c.name)}"/>
         </figure>
-        <div class="label">{c.name}</div>
+        <div class="label">{html.escape(c.name)}</div>
       </a>
 """
         
@@ -167,8 +194,8 @@ class IndexPage:
 
 
 class CategoryPage:
-    def __init__(self, category, cwd):
-        self.config = load_config()
+    def __init__(self, category, cwd, config):
+        self.config = config
 
         # Build navigation HTML with adjusted paths for category pages (in /latest/ folder)
         # We need to go up one directory from /latest/ to reach root
@@ -179,14 +206,14 @@ class CategoryPage:
             if url.startswith('/'):
                 # Remove leading slash and add ../ for relative path from /latest/
                 url = '../' + url.lstrip('/')
-            nav_items_html += f'<a href="{url}" role="menuitem">{item["label"]}</a>\n        '
+            nav_items_html += f'<a href="{html.escape(url)}" role="menuitem">{html.escape(item["label"])}</a>\n        '
 
         self.header = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{self.config['site_name']} - CATEGORYNAME</title>
+  <title>{html.escape(self.config['site_name'])} - CATEGORYNAME</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
@@ -246,7 +273,7 @@ class CategoryPage:
   <!-- Top Navigation -->
   <header class="topbar" role="banner">
     <nav class="nav" aria-label="Primary">
-      <div class="brand" aria-label="Site title"><a href="../index.html">{self.config['site_name']}</a></div>
+      <div class="brand" aria-label="Site title"><a href="../index.html">{html.escape(self.config['site_name'])}</a></div>
       <div class="menu" role="menubar">
         {nav_items_html}
       </div>
@@ -257,7 +284,7 @@ class CategoryPage:
   <section class="hero">
     <h1 id="categoryTitle">CATEGORYNAME</h1>
   </section>
-""".replace("CATEGORYNAME", category.name)
+""".replace("CATEGORYNAME", html.escape(category.name))
 
         self.category = category
         self.cwd = cwd
@@ -268,7 +295,7 @@ class CategoryPage:
         self.footer = f"""
 
   <footer>
-    © <span id="y"></span> {self.config['footer']['copyright']}
+    © <span id="y"></span> {html.escape(self.config['footer']['copyright'])}
   </footer>
 
   <!-- Lightbox overlay -->
@@ -310,9 +337,13 @@ class CategoryPage:
     <div class="grid" id="gallery">
 """
         for art in self.category.art_pieces:
+            full_path = no_dot_relative(self.cwd, art.path)
+            thumb_path = no_dot_relative(self.cwd, art.get_thumbnail_p())
+            if full_path is None or thumb_path is None:
+                continue
             self.art_code += f"""
-      <button class="cell tile" data-full="{no_dot_relative(self.cwd, art.path)}">
-        <img alt="Ballet dancers" src="{no_dot_relative(self.cwd, art.get_thumbnail_p())}">
+      <button class="cell tile" data-full="{html.escape(full_path)}">
+        <img alt="{html.escape(art.path.stem)}" src="{html.escape(thumb_path)}">
       </button>
 """
 
