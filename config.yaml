@@ -9,7 +9,7 @@ navigation:
   - label: "Work"
     url: "/index.html"
   - label: "Resume"
-    url: "/resume.pdf"
+    url: "/latest/resume.pdf"
 
 # Footer configuration
 footer:
