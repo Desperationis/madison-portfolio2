@@ -131,7 +131,6 @@ function startDeploy(message, overlay, modal) {
     "Staging changes",
     "Checking for changes",
     "Committing",
-    "Pulling latest",
     "Pushing",
   ];
 
