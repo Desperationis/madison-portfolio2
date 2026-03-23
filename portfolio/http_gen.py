@@ -168,8 +168,7 @@ class IndexPage:
     <section class="grid" aria-label="Portfolio categories">
 """
         for c in categories:
-            # Use the first art piece's thumbnail if available
-            category_thumb = c.art_pieces[0].get_thumbnail_p() if c.art_pieces else c.thumbnail_p
+            category_thumb = c.thumbnail_p
             thumb_src = dot_relative(cwd, category_thumb)
             if thumb_src is None:
                 continue

@@ -368,6 +368,9 @@ def delete_image(category_name: str, filename: str) -> None:
         if cat["name"] == category_name:
             if filename in cat["images"]:
                 cat["images"].remove(filename)
+            # Clear preview if the deleted image was the preview
+            if cat.get("preview") == filename:
+                cat["preview"] = None
             break
     write_manifest(manifest)
 
