@@ -4,10 +4,8 @@ import logging
 from rich.logging import RichHandler
 from logging.handlers import RotatingFileHandler
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from utils import *
-from http_gen import *
+from .utils import *
+from .http_gen import *
 
 FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
 
@@ -43,11 +41,14 @@ if not (cwd / "config.yaml").is_file():
 
 detected_categories = []
 
-SKIP_DIRS = {".git", ".github", "__pycache__", "latest", ".venv", "node_modules"}
+art_dir = cwd / "art"
+if not art_dir.is_dir():
+    log.error("art/ directory not found. Place art category folders inside art/.")
+    sys.exit(1)
 
-for first_layer in sorted([p for p in cwd.iterdir() if p.is_dir()]):
-    if first_layer.name.startswith(".") or first_layer.name in SKIP_DIRS:
-        log.debug(f"Skipping non-art directory: {first_layer.name}")
+for first_layer in sorted([p for p in art_dir.iterdir() if p.is_dir()]):
+    if first_layer.name.startswith("."):
+        log.debug(f"Skipping hidden directory: {first_layer.name}")
         continue
 
     thumbnails_dir = first_layer / "thumbnails"

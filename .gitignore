@@ -1,7 +1,6 @@
 *.swp
 *.log
-generate.sh
-art-portfolio.log
+.DS_Store
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

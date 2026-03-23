@@ -2,7 +2,7 @@
 
 Source for [lunaportfolio.me](https://lunaportfolio.me). The site rebuilds itself every time you push to GitHub.
 
-**Add art:** Drop images into any folder. Each folder = a gallery category on the site.
+**Add art:** Drop images into a folder inside `art/`. Each folder = a gallery category on the site.
 
 **Add thumbnails (optional):** Put smaller copies in a `thumbnails/` subfolder with the same filenames. Makes pages load faster.
 

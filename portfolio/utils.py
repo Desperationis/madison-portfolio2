@@ -11,13 +11,6 @@ class DebugEasy:
         attrs = ", ".join(f"{k}={v!r}" for k, v in self.__dict__.items())
         return f"{cls}({attrs})"
 
-    def __eq__(self, other):
-            return type(self) is type(other) and vars(self) == vars(other)
-
-    def __hash__(self):
-        # order-independent; all your value types are hashable
-        return hash(frozenset(vars(self).items()))
-
 
 class ArtPiece(DebugEasy):
     def __init__(self, path, thumbnail_path):
@@ -36,7 +29,7 @@ class ArtPiece(DebugEasy):
         if match:
             return int(match.group(1))
         return None
-    
+
     def get_thumbnail_p(self):
         if self.thumbnail_path:
             return self.thumbnail_path
@@ -44,8 +37,6 @@ class ArtPiece(DebugEasy):
         return self.path
 
 class Category(DebugEasy):
-    __hash__ = None  # Contains mutable list (art_pieces), so not safely hashable
-
     IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tif", ".tiff", ".webp", ".heic", ".heif"}
 
     def __init__(self, name, first_layer_p, second_layer_p):
@@ -57,7 +48,7 @@ class Category(DebugEasy):
 
         self._get_art()
 
-        
+
     def _get_art(self):
         name_to_key_mapping = {}
         thumbnail_mapping = {}

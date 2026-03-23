@@ -1,4 +1,4 @@
-from utils import *
+from .utils import *
 import html
 import yaml
 from pathlib import Path
@@ -181,13 +181,13 @@ class IndexPage:
         <div class="label">{html.escape(c.name)}</div>
       </a>
 """
-        
+
         self.category_code += """
     </section>
 </main>
 """
 
-        
+
     def get_content(self):
         return self.header + self.category_code + self.footer
 
