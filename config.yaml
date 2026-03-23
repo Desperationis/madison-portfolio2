@@ -1,7 +1,7 @@
 site_name: MADISON
 navigation:
 - label: Work
-  url: /index.html
+  url: /
 - label: Resume
   url: latest/resume.pdf
 footer:
