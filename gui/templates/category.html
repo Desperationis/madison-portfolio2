@@ -1,33 +1,10 @@
 {% extends "base.html" %}
 
-{% block content %}
+{% block page_styles %}
+<link rel="stylesheet" href="/portfolio-css/category.css">
 <style>
-  /* Page title */
-  .hero{max-width:var(--maxw);margin:24px auto 6px;padding:0 24px}
-  .hero h1{font-family:"Playfair Display",serif;font-size:38px;margin:18px 0 6px}
-  .hero p{margin:0;color:var(--muted)}
-
-  /* Gallery grid */
-  .wrap{max-width:var(--maxw);margin:14px auto 80px;padding:0 24px}
-  .grid{display:grid;gap:var(--gap,18px);grid-template-columns:repeat(12,1fr)}
-  .cell{grid-column:span 4;position:relative}
-  @media (max-width: 980px){.cell{grid-column:span 6}}
-  @media (max-width: 640px){.cell{grid-column:span 12}}
-
-  .tile{position:relative;display:block;width:100%;aspect-ratio:1/1;border-radius:10px;overflow:hidden;background:#f3f4f6;box-shadow:0 10px 25px rgba(0,0,0,.06);cursor:pointer;border:none;padding:0}
-  .tile img{width:100%;height:100%;display:block;object-fit:cover;transition:transform .45s ease, filter .45s ease}
-  .tile:hover img{transform:scale(1.05);filter:contrast(1.05)}
-
-  /* Lightbox overlay */
-  .lightbox{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(15,15,18,.85);backdrop-filter:blur(4px);z-index:50}
-  .lightbox.open{display:flex}
-  .lightbox__img{max-width:min(92vw,1400px);max-height:86vh;border-radius:8px;box-shadow:0 15px 45px rgba(0,0,0,.45)}
-  .lightbox__btn{position:absolute;top:50%;transform:translateY(-50%);border:none;background:rgba(255,255,255,.85);width:48px;height:48px;border-radius:999px;display:grid;place-items:center;cursor:pointer}
-  .lightbox__btn:focus{outline:2px solid var(--accent)}
-  .lightbox__prev{left:24px}
-  .lightbox__next{right:24px}
-  .lightbox__close{position:absolute;top:18px;right:18px;border:none;background:rgba(255,255,255,.9);width:42px;height:42px;border-radius:999px;display:grid;place-items:center;cursor:pointer}
-
+  /* GUI-only: image overlay controls */
+  .cell{position:relative}
   .cell .tile-overlay{position:absolute;top:8px;right:8px;bottom:auto;left:auto;background:transparent;display:flex;gap:6px;opacity:0;pointer-events:none;transition:opacity .2s;padding:0;z-index:10}
   .cell:hover .tile-overlay{opacity:1;pointer-events:auto}
   .cell .tile-overlay .drag-handle{width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;display:flex;align-items:center;justify-content:center;cursor:grab}
@@ -36,8 +13,11 @@
   .cell .tile-overlay .preview-btn{width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;font-size:12px;padding:0}
   .cell .tile-overlay .preview-btn:hover{background:rgba(90,167,255,.9)}
   .cell .tile-overlay .preview-btn.is-preview{background:rgba(234,179,8,.85)}
+  .cell .tile-overlay .move-btn{width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;font-size:13px;padding:0}
+  .cell .tile-overlay .move-btn:hover{background:rgba(90,167,255,.9)}
   .cell.is-preview-cell .tile{outline:3px solid rgba(234,179,8,.85);outline-offset:-3px}
 
+  /* GUI-only: thumbnail crop tool */
   .crop-container{position:relative;margin:0 auto;user-select:none;-webkit-user-select:none;overflow:hidden;border-radius:6px;background:#1a1a1a}
   .crop-container img{display:block;pointer-events:none}
   .crop-region{position:absolute;border:2px solid rgba(255,255,255,.9);box-shadow:0 0 0 9999px rgba(0,0,0,.5);cursor:move;box-sizing:border-box}
@@ -48,10 +28,15 @@
   .crop-handle.se{bottom:-7px;right:-7px;cursor:se-resize}
   .crop-hint{text-align:center;color:var(--muted);font-size:12px;margin-top:8px}
 
-  /* Drop zone overlay */
+  /* GUI-only: drop zone overlay */
   .drop-zone-overlay{position:fixed;inset:0;z-index:100;background:rgba(15,15,18,.7);backdrop-filter:blur(4px);align-items:center;justify-content:center;flex-direction:column}
-</style>
 
+  /* GUI-only: button padding reset for tiles */
+  .tile{padding:0}
+</style>
+{% endblock %}
+
+{% block content %}
 <section class="hero">
   <h1 class="editable" data-field="category_name" data-name="{{ category_name }}">{{ category_name }}</h1>
 </section>
@@ -66,6 +51,7 @@
       <div class="tile-overlay">
         <span class="drag-handle" title="Drag to reorder">&#10303;</span>
         <button class="preview-btn{% if img.filename == (preview_filename or (images[0].filename if images else '')) %} is-preview{% endif %}" data-filename="{{ img.filename }}" title="Set as category preview">&#9733;</button>
+        <button class="move-btn" data-filename="{{ img.filename }}" title="Move to category">&#8618;</button>
         <button class="settings-image-btn" data-filename="{{ img.filename }}" title="Crop thumbnail">&#9881;</button>
         <button class="delete-btn delete-image-btn" data-filename="{{ img.filename }}" title="Delete">&#10005;</button>
       </div>
@@ -266,6 +252,106 @@ document.querySelectorAll('.preview-btn').forEach(btn => {
         showToast(err.message || "Failed to set preview", "error");
       }
     })();
+  });
+});
+
+// Move image to another category
+document.querySelectorAll('.move-btn').forEach(btn => {
+  btn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const filename = btn.dataset.filename;
+
+    // Fetch categories to populate the dropdown
+    let categories;
+    try {
+      categories = await apiGet('/api/categories');
+    } catch (err) {
+      showToast(err.message || 'Failed to load categories', 'error');
+      return;
+    }
+
+    // Filter out the current category
+    const otherCategories = categories.filter(c => c.name !== categoryName);
+    if (otherCategories.length === 0) {
+      showToast('No other categories to move to', 'error');
+      return;
+    }
+
+    const overlay = document.getElementById('modalOverlay');
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+
+    const titleEl = document.createElement('h2');
+    titleEl.className = 'modal-title';
+    titleEl.textContent = 'Move Image';
+
+    const bodyEl = document.createElement('div');
+    bodyEl.className = 'modal-body';
+
+    const label = document.createElement('label');
+    label.textContent = `Move "${filename}" to:`;
+    label.style.cssText = 'display:block;margin-bottom:8px;';
+
+    const select = document.createElement('select');
+    select.style.cssText = 'width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;font:inherit;box-sizing:border-box;';
+    otherCategories.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.name;
+      opt.textContent = c.name;
+      select.appendChild(opt);
+    });
+
+    bodyEl.appendChild(label);
+    bodyEl.appendChild(select);
+
+    const actions = document.createElement('div');
+    actions.className = 'modal-actions';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'btn-cancel';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.addEventListener('click', closeModal);
+    actions.appendChild(cancelBtn);
+
+    const confirmBtn = document.createElement('button');
+    confirmBtn.className = 'btn-primary';
+    confirmBtn.textContent = 'Move';
+    confirmBtn.addEventListener('click', async () => {
+      const dest = select.value;
+      try {
+        await apiPost(
+          `/api/categories/${encodeURIComponent(categoryName)}/images/${encodeURIComponent(filename)}/move`,
+          { destination: dest }
+        );
+        const cell = btn.closest('.cell');
+        if (cell) {
+          cell.style.transition = 'opacity 0.3s ease';
+          cell.style.opacity = '0';
+          setTimeout(() => cell.remove(), 300);
+        }
+        showToast(`Moved to "${dest}"`);
+        closeModal();
+      } catch (err) {
+        showToast(err.message || 'Move failed', 'error');
+      }
+    });
+    actions.appendChild(confirmBtn);
+
+    modal.appendChild(titleEl);
+    modal.appendChild(bodyEl);
+    modal.appendChild(actions);
+    overlay.innerHTML = '';
+    overlay.appendChild(modal);
+    overlay.classList.add('active');
+
+    function onKeydown(e) {
+      if (e.key === 'Escape') closeModal();
+      else if (e.key === 'Enter') { e.preventDefault(); confirmBtn.click(); }
+    }
+    document.addEventListener('keydown', onKeydown);
+    overlay._keydownHandler = onKeydown;
+
+    select.focus();
   });
 });
 

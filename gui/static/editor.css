@@ -82,6 +82,16 @@
   position: relative;
 }
 
+/* GUI wraps cards in <div class="card"><a>...</a></div> instead of <a class="card">.
+   Propagate the flex layout so alignment matches the generated site. */
+.card > a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+}
+
 .card-overlay {
   position: absolute;
   inset: 0;

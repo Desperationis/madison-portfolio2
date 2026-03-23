@@ -333,6 +333,16 @@ def delete_image(name, filename):
     return jsonify({"deleted": filename})
 
 
+@api.route("/categories/<name>/images/<filename>/move", methods=["POST"])
+def move_image(name, filename):
+    """Move an image to a different category."""
+    data = request.get_json(silent=True)
+    if not data or not data.get("destination"):
+        return jsonify({"error": "Missing 'destination' in request body"}), 400
+    result = file_ops.move_image(name, filename, data["destination"])
+    return jsonify(result)
+
+
 @api.route("/categories/<name>/images/<filename>/thumbnail", methods=["PUT"])
 def crop_thumbnail(name, filename):
     """Crop the original image at the given region and save as thumbnail."""

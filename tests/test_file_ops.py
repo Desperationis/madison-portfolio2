@@ -34,11 +34,11 @@ def temp_manifest(tmp_path, monkeypatch):
 
 
 EXPECTED_CATEGORIES = [
+    "The Guardian Press Works",
     "Finished Pieces",
     "Line Art",
     "Character works",
     "Storyboard Panels",
-    "The Guardian Press Works",
     "Volition Wingspan Works",
     "sketches",
 ]

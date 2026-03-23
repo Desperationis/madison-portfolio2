@@ -37,6 +37,12 @@ def create_app():
 
     art_dir = os.path.join(os.getcwd(), "art")
     latest_dir = os.path.join(os.getcwd(), "latest")
+    portfolio_css_dir = os.path.join(os.path.dirname(__file__), "portfolio", "css")
+
+    @app.route("/portfolio-css/<path:filename>")
+    def serve_portfolio_css(filename):
+        """Serve shared CSS files from portfolio/css/."""
+        return send_from_directory(portfolio_css_dir, filename)
 
     @app.route("/")
     def index():

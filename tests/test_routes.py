@@ -82,9 +82,8 @@ class TestRoutes:
         assert 'id="closeBtn"' in html
         assert 'class="lightbox"' in html
 
-        # Lightbox CSS
-        assert ".lightbox{" in html or ".lightbox {" in html
-        assert ".lightbox.open{display:flex}" in html or ".lightbox.open" in html
+        # Lightbox CSS — now loaded from external stylesheet link
+        assert "/portfolio-css/category.css" in html
 
         # Lightbox JS functions
         assert "function openAt(" in html

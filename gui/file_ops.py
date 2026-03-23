@@ -504,6 +504,74 @@ def set_category_preview(category_name: str, filename: str | None) -> dict:
     }
 
 
+def move_image(source_category: str, filename: str, dest_category: str) -> dict:
+    """Move an image (and its thumbnail) from one category to another.
+
+    Updates the manifest for both categories. Returns the image dict in
+    its new location (matching list_images format).
+    Raises FileNotFoundError if source image or dest category doesn't exist.
+    Raises FileExistsError if a file with the same name exists in dest.
+    """
+    if source_category == dest_category:
+        raise ValueError("Source and destination categories are the same")
+
+    src_dir = ART_DIR / source_category
+    dst_dir = ART_DIR / dest_category
+    if not src_dir.is_dir():
+        raise FileNotFoundError(f"Category '{source_category}' does not exist")
+    if not dst_dir.is_dir():
+        raise FileNotFoundError(f"Category '{dest_category}' does not exist")
+
+    src_image = src_dir / filename
+    if not src_image.is_file():
+        raise FileNotFoundError(
+            f"Image '{filename}' does not exist in category '{source_category}'"
+        )
+
+    dst_image = dst_dir / filename
+    if dst_image.exists():
+        raise FileExistsError(
+            f"Image '{filename}' already exists in category '{dest_category}'"
+        )
+
+    # Move the image file
+    shutil.move(str(src_image), str(dst_image))
+
+    # Move thumbnail if it exists
+    src_thumb = src_dir / "thumbnails" / filename
+    dst_thumb_dir = dst_dir / "thumbnails"
+    dst_thumb_dir.mkdir(exist_ok=True)
+    if src_thumb.is_file():
+        shutil.move(str(src_thumb), str(dst_thumb_dir / filename))
+
+    # Update manifest: remove from source, add to dest
+    manifest = read_manifest()
+    for cat in manifest["categories"]:
+        if cat["name"] == source_category:
+            if filename in cat["images"]:
+                cat["images"].remove(filename)
+            if cat.get("preview") == filename:
+                cat["preview"] = None
+        elif cat["name"] == dest_category:
+            cat["images"].append(filename)
+    write_manifest(manifest)
+
+    logger.info("Moved image '%s' from '%s' to '%s'", filename, source_category, dest_category)
+
+    # Build return dict
+    encoded_cat = urllib.parse.quote(dest_category, safe='')
+    encoded_filename = urllib.parse.quote(filename, safe='')
+    thumb_path = dst_thumb_dir / filename
+    return {
+        "filename": filename,
+        "has_thumbnail": thumb_path.exists(),
+        "thumbnail_filename": filename if thumb_path.exists() else None,
+        "full_url": f"/art/{encoded_cat}/{encoded_filename}",
+        "thumbnail_url": f"/art/{encoded_cat}/thumbnails/{encoded_filename}" if thumb_path.exists() else f"/art/{encoded_cat}/{encoded_filename}",
+        "size_bytes": dst_image.stat().st_size,
+    }
+
+
 def reorder_images(category_name: str, ordered_filenames: list[str]) -> dict:
     """Reorder images in a category by updating the manifest array.
 

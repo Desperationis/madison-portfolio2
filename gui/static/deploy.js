@@ -5,13 +5,23 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!deployBtn) return;
 
   deployBtn.addEventListener("click", async () => {
+    // Immediate feedback while preflight runs
+    const origText = deployBtn.textContent;
+    deployBtn.disabled = true;
+    deployBtn.textContent = "Checking...";
+
     let preflight;
     try {
       preflight = await apiGet("/api/deploy/preflight");
     } catch (err) {
+      deployBtn.disabled = false;
+      deployBtn.textContent = origText;
       showToast("Could not reach the server. Is the portfolio manager still running?", "error");
       return;
     }
+
+    deployBtn.disabled = false;
+    deployBtn.textContent = origText;
 
     if (!preflight.ready) {
       showPreflightErrorModal(preflight);
