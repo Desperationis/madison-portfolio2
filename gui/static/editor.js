@@ -166,91 +166,6 @@ function showPromptModal({ title, label, placeholder, value = "", onConfirm }) {
   if (input) input.focus();
 }
 
-function showTwoFieldPromptModal({ title, label1, placeholder1, value1 = "", label2, placeholder2, value2 = "", onConfirm }) {
-  const overlay = document.getElementById("modalOverlay");
-  const modal = document.createElement("div");
-  modal.className = "modal";
-
-  const titleEl = document.createElement("h2");
-  titleEl.className = "modal-title";
-  titleEl.textContent = title;
-
-  const bodyEl = document.createElement("div");
-  bodyEl.className = "modal-body";
-
-  const lbl1 = document.createElement("label");
-  lbl1.textContent = label1;
-  lbl1.style.cssText = "display:block;margin-bottom:4px;";
-  const input1 = document.createElement("input");
-  input1.type = "text";
-  input1.placeholder = placeholder1 || "";
-  input1.value = value1;
-  input1.style.cssText = "width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;font:inherit;box-sizing:border-box;margin-bottom:12px;";
-
-  const lbl2 = document.createElement("label");
-  lbl2.textContent = label2;
-  lbl2.style.cssText = "display:block;margin-bottom:4px;";
-  const input2 = document.createElement("input");
-  input2.type = "text";
-  input2.placeholder = placeholder2 || "";
-  input2.value = value2;
-  input2.style.cssText = "width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;font:inherit;box-sizing:border-box;";
-
-  const errorEl = document.createElement("div");
-  errorEl.style.cssText = "color:#e53e3e;font-size:13px;margin-top:8px;display:none;";
-
-  bodyEl.appendChild(lbl1);
-  bodyEl.appendChild(input1);
-  bodyEl.appendChild(lbl2);
-  bodyEl.appendChild(input2);
-  bodyEl.appendChild(errorEl);
-
-  const actions = document.createElement("div");
-  actions.className = "modal-actions";
-
-  const cancelBtn = document.createElement("button");
-  cancelBtn.className = "btn-cancel";
-  cancelBtn.textContent = "Cancel";
-  cancelBtn.addEventListener("click", closeModal);
-  actions.appendChild(cancelBtn);
-
-  const confirmBtn = document.createElement("button");
-  confirmBtn.className = "btn-primary";
-  confirmBtn.textContent = "OK";
-  confirmBtn.addEventListener("click", () => {
-    const v1 = input1.value.trim();
-    const v2 = input2.value.trim();
-    if (!v1 || !v2) {
-      errorEl.textContent = "Both fields are required.";
-      errorEl.style.display = "block";
-      return;
-    }
-    if (onConfirm) onConfirm(v1, v2);
-    closeModal();
-  });
-  actions.appendChild(confirmBtn);
-
-  modal.appendChild(titleEl);
-  modal.appendChild(bodyEl);
-  modal.appendChild(actions);
-  overlay.innerHTML = "";
-  overlay.appendChild(modal);
-  overlay.classList.add("active");
-
-  function onKeydown(e) {
-    if (e.key === "Escape") {
-      closeModal();
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      confirmBtn.click();
-    }
-  }
-  document.addEventListener("keydown", onKeydown);
-  overlay._keydownHandler = onKeydown;
-
-  input1.focus();
-}
-
 /* === Inline Editing === */
 
 function makeEditable(element, onSave) {
@@ -391,6 +306,12 @@ document.addEventListener("DOMContentLoaded", () => {
       placeholderOpt.value = "";
       placeholderOpt.textContent = "-- Select file --";
       urlSelect.appendChild(placeholderOpt);
+      // Add "/" (site root) as first real option
+      const rootOpt = document.createElement("option");
+      rootOpt.value = "/";
+      rootOpt.textContent = "/ (site root)";
+      if (originalUrl === "/") rootOpt.selected = true;
+      urlSelect.appendChild(rootOpt);
       files.forEach(f => {
         const opt = document.createElement("option");
         opt.value = f;
@@ -426,6 +347,8 @@ document.addEventListener("DOMContentLoaded", () => {
       navItem.textContent = "";
       navItem.appendChild(form);
       btn.style.display = "none";
+      const deleteBtn = document.querySelector(`.nav-delete-btn[data-index="${index}"]`);
+      if (deleteBtn) deleteBtn.style.display = "none";
       labelInput.focus();
 
       function restoreOriginal() {
@@ -434,6 +357,7 @@ document.addEventListener("DOMContentLoaded", () => {
         navItem.classList.remove("editing");
         navItem.removeEventListener("click", preventNavClick);
         btn.style.display = "";
+        if (deleteBtn) deleteBtn.style.display = "";
       }
 
       cancelBtn.addEventListener("click", (e) => {
@@ -458,6 +382,7 @@ document.addEventListener("DOMContentLoaded", () => {
           navItem.classList.remove("editing");
           navItem.removeEventListener("click", preventNavClick);
           btn.style.display = "";
+          if (deleteBtn) deleteBtn.style.display = "";
           showToast("Navigation item updated", "success");
         } catch (err) {
           showToast(err.message || "Failed to update nav item", "error");
@@ -547,6 +472,11 @@ document.addEventListener("DOMContentLoaded", () => {
       placeholder.value = "";
       placeholder.textContent = "-- Select a file --";
       select.appendChild(placeholder);
+      // Add "/" (site root) as first real option
+      const rootOpt = document.createElement("option");
+      rootOpt.value = "/";
+      rootOpt.textContent = "/ (site root)";
+      select.appendChild(rootOpt);
       files.forEach(f => {
         const opt = document.createElement("option");
         opt.value = f;
@@ -696,7 +626,7 @@ document.addEventListener("DOMContentLoaded", () => {
           // Update DOM elements
           const brandEl = document.querySelector(".brand");
           if (brandEl) brandEl.textContent = newName;
-          const footerEl = document.querySelector("footer p");
+          const footerEl = document.querySelector("footer .editable");
           if (footerEl) footerEl.textContent = newFooter;
           showToast("Settings saved", "success");
           closeModal();

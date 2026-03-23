@@ -10,9 +10,7 @@ from gui.config_ops import (
     CONFIG_PATH,
     add_nav_item,
     delete_nav_item,
-    get_footer_copyright,
     get_nav_items,
-    get_site_name,
     read_config,
     reorder_nav_items,
     update_footer_copyright,
@@ -40,12 +38,12 @@ def tmp_config(tmp_path):
 
 
 def test_update_site_name(tmp_config):
-    original = get_site_name()
+    original = read_config()["site_name"]
     update_site_name("NEW NAME")
-    assert get_site_name() == "NEW NAME"
+    assert read_config()["site_name"] == "NEW NAME"
     # restore
     update_site_name(original)
-    assert get_site_name() == original
+    assert read_config()["site_name"] == original
 
 
 def test_update_site_name_empty_raises(tmp_config):
@@ -56,12 +54,12 @@ def test_update_site_name_empty_raises(tmp_config):
 
 
 def test_update_footer_copyright(tmp_config):
-    original = get_footer_copyright()
+    original = read_config()["footer"]["copyright"]
     update_footer_copyright("New Footer")
-    assert get_footer_copyright() == "New Footer"
+    assert read_config()["footer"]["copyright"] == "New Footer"
     # restore
     update_footer_copyright(original)
-    assert get_footer_copyright() == original
+    assert read_config()["footer"]["copyright"] == original
 
 
 def test_update_footer_copyright_empty_raises(tmp_config):

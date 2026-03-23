@@ -10,8 +10,6 @@ from portfolio.manifest import (
     get_category,
     migrate_to_manifest,
     read_manifest,
-    remove_category,
-    save_category,
     validate_manifest,
     write_manifest,
 )
@@ -187,47 +185,6 @@ class TestGetCategory:
     def test_not_found(self, manifest_file):
         write_manifest(VALID_MANIFEST)
         assert get_category("Nonexistent") is None
-
-
-class TestSaveCategory:
-    def test_update_existing(self, manifest_file):
-        write_manifest(VALID_MANIFEST)
-        save_category("Sketches", {"name": "Sketches", "preview": "a.jpg", "images": ["a.jpg"]})
-        cat = get_category("Sketches")
-        assert cat["preview"] == "a.jpg"
-        assert cat["images"] == ["a.jpg"]
-
-    def test_insert_new(self, manifest_file):
-        write_manifest({"categories": []})
-        save_category("New", {"name": "New", "preview": None, "images": []})
-        cat = get_category("New")
-        assert cat is not None
-        assert cat["name"] == "New"
-
-    def test_insert_preserves_existing(self, manifest_file):
-        write_manifest(VALID_MANIFEST)
-        save_category("New", {"name": "New", "preview": None, "images": []})
-        # Original categories should still be there
-        assert get_category("Sketches") is not None
-        assert get_category("Paintings") is not None
-        assert get_category("New") is not None
-
-
-class TestRemoveCategory:
-    def test_remove_existing(self, manifest_file):
-        write_manifest(VALID_MANIFEST)
-        remove_category("Sketches")
-        assert get_category("Sketches") is None
-        # Other category remains
-        assert get_category("Paintings") is not None
-
-    def test_remove_nonexistent_is_noop(self, manifest_file):
-        """Removing a category that doesn't exist doesn't raise."""
-        write_manifest(VALID_MANIFEST)
-        remove_category("DoesNotExist")
-        # Both original categories still present
-        data = read_manifest()
-        assert len(data["categories"]) == 2
 
 
 # --- Migration ---

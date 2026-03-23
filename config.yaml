@@ -3,6 +3,6 @@ navigation:
 - label: Work
   url: /index.html
 - label: Resume
-  url: CLAUDE.md
+  url: latest/resume.pdf
 footer:
   copyright: Madison Luna

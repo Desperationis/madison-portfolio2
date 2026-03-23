@@ -59,26 +59,6 @@ def get_category(name: str) -> dict | None:
     return None
 
 
-def save_category(name: str, category_data: dict) -> None:
-    """Update or insert a category entry by name."""
-    data = read_manifest()
-    for i, cat in enumerate(data["categories"]):
-        if cat["name"] == name:
-            data["categories"][i] = category_data
-            write_manifest(data)
-            return
-    # Not found — append
-    data["categories"].append(category_data)
-    write_manifest(data)
-
-
-def remove_category(name: str) -> None:
-    """Remove a category entry by name."""
-    data = read_manifest()
-    data["categories"] = [c for c in data["categories"] if c["name"] != name]
-    write_manifest(data)
-
-
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tif", ".tiff", ".webp", ".heic", ".heif"}
 
 

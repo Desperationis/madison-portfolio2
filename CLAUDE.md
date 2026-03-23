@@ -46,7 +46,7 @@ The `portfolio.json` manifest at the project root defines all portfolio content 
 
 ### Key files
 
-- `portfolio/manifest.py` — Read/write/validate `portfolio.json`. Provides `read_manifest()`, `write_manifest()`, `get_category()`, `save_category()`, `remove_category()`, and `migrate_to_manifest()` for bootstrapping from a legacy filesystem layout.
+- `portfolio/manifest.py` — Read/write/validate `portfolio.json`. Provides `read_manifest()`, `write_manifest()`, `get_category()`, and `migrate_to_manifest()` for bootstrapping from a legacy filesystem layout.
 - `portfolio/utils.py` — Data models (`ArtPiece`, `Category`). `Category` accepts a name, directory path, and an ordered image list from the manifest. `ArtPiece` holds resolved paths for full-size and thumbnail images.
 - `portfolio/__main__.py` — Entry point (`python -m portfolio`). Reads the manifest, constructs `Category` objects, generates index and category pages. Also supports `--migrate` to bootstrap `portfolio.json` from an existing `art/` directory.
 - `portfolio/http_gen.py` — HTML generators (`IndexPage`, `CategoryPage`). Produces self-contained HTML with inline CSS/JS. CategoryPage includes a lightbox gallery with keyboard navigation.

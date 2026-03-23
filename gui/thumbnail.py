@@ -64,31 +64,6 @@ def generate_thumbnail(
     return output_path
 
 
-def regenerate_all_thumbnails(
-    category_path: Path,
-    force: bool = False,
-) -> list[Path]:
-    """Regenerate thumbnails for all images in a category directory.
-
-    Scans category_path for image files. For each, generates a thumbnail
-    if force=True or the thumbnail doesn't already exist.
-    Returns list of generated/regenerated thumbnail paths.
-    """
-    thumbnail_dir = category_path / "thumbnails"
-    generated = []
-
-    for p in sorted(category_path.iterdir()):
-        if not p.is_file() or p.suffix.lower() not in IMAGE_EXTS:
-            continue
-        thumb_path = thumbnail_dir / p.name
-        if not force and thumb_path.exists():
-            continue
-        result = generate_thumbnail(p, thumbnail_dir)
-        generated.append(result)
-
-    return generated
-
-
 def delete_thumbnail(category_path: Path, filename: str) -> bool:
     """Delete a single thumbnail file from a category's thumbnails directory.
 

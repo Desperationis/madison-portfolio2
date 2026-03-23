@@ -61,11 +61,6 @@ def write_config(data: dict) -> None:
     tmp_path.rename(CONFIG_PATH)
 
 
-def get_site_name() -> str:
-    """Return the site_name from config.yaml."""
-    return read_config()["site_name"]
-
-
 def update_site_name(name: str) -> None:
     """Set site_name in config.yaml. Raises ValueError if name is empty/whitespace."""
     if not name or not name.strip():
@@ -73,11 +68,6 @@ def update_site_name(name: str) -> None:
     config = read_config()
     config["site_name"] = name
     write_config(config)
-
-
-def get_footer_copyright() -> str:
-    """Return the footer copyright string from config.yaml."""
-    return read_config()["footer"]["copyright"]
 
 
 def update_footer_copyright(text: str) -> None:

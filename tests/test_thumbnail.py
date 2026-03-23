@@ -5,7 +5,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from gui.thumbnail import delete_thumbnail, generate_thumbnail, regenerate_all_thumbnails
+from gui.thumbnail import delete_thumbnail, generate_thumbnail
 
 
 def test_generate_thumbnail_dimensions():
@@ -41,32 +41,6 @@ def test_generate_thumbnail_rgba_to_rgb():
         assert result.exists(), "Thumbnail file should exist"
         thumb = Image.open(result)
         assert thumb.mode == "RGB", f"Expected RGB mode, got {thumb.mode}"
-
-
-def test_regenerate_all_thumbnails():
-    """3.2.3: Creates thumbnails for all images missing them."""
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp_path = Path(tmp)
-        # Create 3 test images in the category directory
-        for i in range(1, 4):
-            img = Image.new("RGB", (500, 500), color=(i * 50, 100, 100))
-            img.save(tmp_path / f"image_{i}.jpg", "JPEG")
-
-        # No thumbnails directory yet
-        assert not (tmp_path / "thumbnails").exists()
-
-        generated = regenerate_all_thumbnails(tmp_path)
-        assert len(generated) == 3, f"Expected 3 thumbnails, got {len(generated)}"
-        for p in generated:
-            assert p.exists(), f"Thumbnail {p} should exist"
-
-        # Running again without force should skip all (already exist)
-        generated_again = regenerate_all_thumbnails(tmp_path, force=False)
-        assert len(generated_again) == 0, "Should skip existing thumbnails"
-
-        # Running with force should regenerate all
-        generated_force = regenerate_all_thumbnails(tmp_path, force=True)
-        assert len(generated_force) == 3, "Force should regenerate all"
 
 
 def test_delete_thumbnail():

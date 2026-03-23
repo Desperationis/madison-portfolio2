@@ -33,11 +33,6 @@
     .brand{letter-spacing:.35em;font-weight:600}
     .menu{display:flex;gap:26px;align-items:center;font-size:14px;color:var(--muted)}
     .menu a{position:relative}
-    .menu a.active{color:var(--ink);font-weight:600}
-    .menu a.active::after{
-      content:"";position:absolute;right:-10px;top:50%;transform:translateY(-50%) rotate(45deg);
-      width:6px;height:6px;border-right:1.5px solid var(--ink);border-bottom:1.5px solid var(--ink);
-    }
 
     /* --- Layout --- */
     .wrap{max-width:var(--maxw);margin:40px auto;padding:0 24px 64px}
