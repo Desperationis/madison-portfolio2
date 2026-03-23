@@ -185,7 +185,10 @@ def _make_step(name: str, *, success: bool = False, output: str = "",
 
 
 def deploy(commit_message: str = "Update portfolio") -> dict:
-    """Run the full deploy pipeline: pull → generate → stage → commit → push.
+    """Run the full deploy pipeline: generate → stage → commit → push.
+
+    Origin sync happens at GUI startup (sync_to_origin), so the working tree
+    is already up-to-date — no pull needed here.
 
     Returns a dict with keys:
         success (bool): True if all steps completed successfully.
@@ -193,7 +196,6 @@ def deploy(commit_message: str = "Update portfolio") -> dict:
         error (str | None): Top-level error message, or None on success.
     """
     step_names = [
-        "Pulling latest",
         "Generating site",
         "Staging changes",
         "Checking for changes",
@@ -216,23 +218,11 @@ def deploy(commit_message: str = "Update portfolio") -> dict:
 
     logger.info("Starting deploy with message: %s", commit_message)
 
-    # Step 1: Pull latest
-    step = _make_step("Pulling latest")
-    steps.append(step)
+    # Determine current branch (used by push step)
     branch_proc = _run_git("rev-parse", "--abbrev-ref", "HEAD")
     branch = branch_proc.stdout.strip() if branch_proc.returncode == 0 else "main"
-    try:
-        proc = _run_git("pull", "--rebase", "origin", branch, timeout=30)
-        step["output"] = proc.stdout
-        if proc.returncode != 0:
-            error_msg = (proc.stderr or "Failed to pull latest changes") + \
-                "\nTry running `git rebase --abort` to undo, then resolve conflicts manually."
-            return _fail(step, error_msg)
-        step["success"] = True
-    except RuntimeError as exc:
-        return _fail(step, str(exc))
 
-    # Step 2: Generate site
+    # Step 1: Generate site
     step = _make_step("Generating site")
     steps.append(step)
     try:
@@ -250,7 +240,7 @@ def deploy(commit_message: str = "Update portfolio") -> dict:
     except subprocess.TimeoutExpired:
         return _fail(step, "Site generation timed out after 60s")
 
-    # Step 3: Stage changes
+    # Step 2: Stage changes
     step = _make_step("Staging changes")
     steps.append(step)
     try:
@@ -262,7 +252,7 @@ def deploy(commit_message: str = "Update portfolio") -> dict:
     except RuntimeError as exc:
         return _fail(step, str(exc))
 
-    # Step 4: Check for changes
+    # Step 3: Check for changes
     step = _make_step("Checking for changes")
     steps.append(step)
     try:
@@ -274,14 +264,14 @@ def deploy(commit_message: str = "Update portfolio") -> dict:
             step["success"] = True
             step["output"] = "No changes to deploy"
             # Mark remaining steps as skipped
-            for name in step_names[4:]:
+            for name in step_names[3:]:
                 steps.append(_make_step(name, skipped=True))
             return {"success": True, "steps": steps, "error": None}
         step["success"] = True
     except RuntimeError as exc:
         return _fail(step, str(exc))
 
-    # Step 5: Commit
+    # Step 4: Commit
     step = _make_step("Committing")
     steps.append(step)
     try:
@@ -293,7 +283,7 @@ def deploy(commit_message: str = "Update portfolio") -> dict:
     except RuntimeError as exc:
         return _fail(step, str(exc))
 
-    # Step 6: Push
+    # Step 5: Push
     step = _make_step("Pushing")
     steps.append(step)
     try:

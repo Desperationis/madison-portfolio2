@@ -86,4 +86,4 @@ The `gui/` package provides the backend; `GUI.py` is the entry point.
 
 ### Deploy Pipeline
 
-The "Deploy to Website" button runs: preflight checks (clean working tree, remote reachable) → `git pull --rebase` → `python3 -m portfolio` to regenerate HTML → `git add/commit` → `git push`. Each step reports success/failure independently so errors are easy to diagnose.
+The "Deploy to Website" button runs: preflight checks (clean working tree, remote reachable) → `python3 -m portfolio` to regenerate HTML → `git add/commit` → `git push`. No pull is needed because the GUI already synced to origin on startup. Each step reports success/failure independently so errors are easy to diagnose.
