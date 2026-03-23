@@ -1,17 +1,6 @@
 {
   "categories": [
     {
-      "name": "Finished Pieces",
-      "preview": "Art 103 Historical Images_2.jpg",
-      "images": [
-        "WINGSPAN COVER 2.0_3.jpg",
-        "Witch Oc Final_1.jpg",
-        "Art 103 Historical Images_2.jpg",
-        "Art 103 Project_4.jpg",
-        "Lucas Eve. Illustration_5.jpg"
-      ]
-    },
-    {
       "name": "The Guardian Press Works",
       "preview": null,
       "images": [
@@ -26,6 +15,17 @@
         "TPG-I3-INKS.jpg",
         "GP.p30_jp.jpg",
         "TGP pg15 COLOR.jpg"
+      ]
+    },
+    {
+      "name": "Finished Pieces",
+      "preview": "Art 103 Historical Images_2.jpg",
+      "images": [
+        "WINGSPAN COVER 2.0_3.jpg",
+        "Witch Oc Final_1.jpg",
+        "Art 103 Historical Images_2.jpg",
+        "Art 103 Project_4.jpg",
+        "Lucas Eve. Illustration_5.jpg"
       ]
     },
     {
