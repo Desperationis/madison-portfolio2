@@ -1,0 +1,542 @@
+/* === 12.1 Edit overlay styles === */
+
+.edit-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(90, 167, 255, 0.9);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  line-height: 1;
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+*:hover > .edit-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.edit-btn:hover {
+  background: rgba(70, 147, 235, 1);
+}
+
+.delete-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  line-height: 1;
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+*:hover > .delete-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.delete-btn:hover {
+  background: #dc2626;
+}
+
+.editable {
+  cursor: pointer;
+}
+
+.editable:hover {
+  border-bottom: 1px dashed var(--accent);
+}
+
+.editable-input {
+  font: inherit;
+  background: transparent;
+  color: inherit;
+  border: none;
+  border-bottom: 2px solid var(--accent);
+  outline: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+}
+
+/* === 12.2 Card and tile overlays === */
+
+.card {
+  position: relative;
+}
+
+.card-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 10;
+}
+
+.card:hover .card-overlay {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.card-overlay .edit-btn,
+.card-overlay .delete-btn {
+  position: static;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.tile {
+  position: relative;
+}
+
+.tile-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 10;
+}
+
+.tile:hover .tile-overlay {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.tile-overlay .delete-btn {
+  position: static;
+  opacity: 1;
+  pointer-events: auto;
+  margin-left: auto;
+}
+
+.tile-overlay .drag-handle {
+  position: static;
+}
+
+.drag-handle {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: #fff;
+  cursor: grab;
+  user-select: none;
+  opacity: 0.9;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.add-card {
+  border: 2px dashed var(--muted, #888);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  color: var(--muted, #888);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+  background: transparent;
+}
+
+.add-card:hover {
+  border-color: var(--accent, #5aa7ff);
+  color: var(--accent, #5aa7ff);
+}
+
+/* === 12.3 Modal styles === */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.modal {
+  background: #fff;
+  max-width: 480px;
+  width: 90%;
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.modal-title {
+  margin: 0 0 16px;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.modal-body {
+  margin-bottom: 24px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.modal-actions .btn-primary {
+  background: var(--accent, #5aa7ff);
+  color: #fff;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.modal-actions .btn-primary:hover {
+  background: #4896e8;
+}
+
+.modal-actions .btn-danger {
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.modal-actions .btn-danger:hover {
+  background: #dc2626;
+}
+
+.modal-actions .btn-cancel {
+  background: transparent;
+  color: #888;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.modal-actions .btn-cancel:hover {
+  color: #555;
+}
+
+/* === 12.4 Toast notification styles === */
+
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.toast {
+  background: #fff;
+  border-left: 4px solid #888;
+  padding: 12px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  pointer-events: auto;
+  animation: toast-slide-in 0.3s ease forwards;
+}
+
+.toast-success {
+  border-left-color: #22c55e;
+}
+
+.toast-error {
+  border-left-color: #ef4444;
+}
+
+.toast-info {
+  border-left-color: #3b82f6;
+}
+
+@keyframes toast-slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* === 12.5 Editor toolbar styles === */
+
+.editor-toolbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: #fff;
+  border-top: 1px solid #eaeaea;
+  padding: 12px 24px;
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  z-index: 50;
+  box-sizing: border-box;
+}
+
+.deploy-btn {
+  background: #22c55e;
+  color: #fff;
+  font-weight: 600;
+  padding: 10px 24px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.deploy-btn:hover {
+  background: #16a34a;
+}
+
+.settings-btn {
+  background: transparent;
+  color: #888;
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  transition: background 0.15s ease;
+}
+
+.settings-btn:hover {
+  background: #f3f4f6;
+}
+
+/* === 12.6 Drop zone styles === */
+
+.drop-zone-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(90, 167, 255, 0.15);
+  border: 3px dashed var(--accent, #5aa7ff);
+  z-index: 150;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 16px;
+  pointer-events: none;
+}
+
+.drop-zone-overlay.active {
+  display: flex;
+}
+
+.drop-zone-overlay .drop-zone-icon {
+  font-size: 48px;
+  color: var(--accent, #5aa7ff);
+}
+
+.drop-zone-overlay .drop-zone-text {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--accent, #5aa7ff);
+}
+
+.upload-progress {
+  width: 100%;
+  height: 4px;
+  background: #e5e7eb;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.upload-progress .upload-progress-bar {
+  height: 100%;
+  background: #22c55e;
+  width: 0%;
+  transition: width 0.2s ease;
+}
+
+/* === 12.7 Nav editing styles === */
+
+.nav-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(90, 167, 255, 0.9);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-size: 10px;
+  line-height: 1;
+  margin-left: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, background 0.15s ease;
+  vertical-align: middle;
+}
+
+.nav-item:hover .nav-edit-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.nav-edit-btn:hover {
+  background: rgba(70, 147, 235, 1);
+}
+
+.nav-delete-btn {
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
+  margin-left: 2px;
+  vertical-align: middle;
+}
+
+.add-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted, #888);
+  border: 1.5px dashed var(--muted, #888);
+  cursor: pointer;
+  font-size: 1em;
+  line-height: 1;
+  margin-left: 8px;
+  transition: border-color 0.15s ease, color 0.15s ease;
+  vertical-align: middle;
+}
+
+.add-nav-btn:hover {
+  border-color: var(--accent, #5aa7ff);
+  color: var(--accent, #5aa7ff);
+}
+
+.nav-edit-form {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-edit-form input {
+  font: inherit;
+  font-size: 0.9em;
+  background: transparent;
+  color: inherit;
+  border: none;
+  border-bottom: 2px solid var(--accent, #5aa7ff);
+  outline: none;
+  padding: 2px 4px;
+  width: 100px;
+}
+
+.nav-edit-form .btn-save,
+.nav-edit-form .btn-cancel {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.nav-edit-form .btn-save {
+  color: #22c55e;
+}
+
+.nav-edit-form .btn-save:hover {
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.nav-edit-form .btn-cancel {
+  color: #ef4444;
+}
+
+.nav-edit-form .btn-cancel:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* === 12.8 Responsive and body padding === */
+
+body {
+  padding-bottom: 72px;
+}
+
+.sortable-ghost {
+  opacity: 0.4;
+}
+
+.sortable-chosen {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+@media (max-width: 640px) {
+  .editor-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+
+  .modal {
+    width: 100%;
+    max-width: 100%;
+    padding: 20px;
+    border-radius: 0;
+  }
+}

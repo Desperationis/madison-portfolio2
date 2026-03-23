@@ -33,3 +33,33 @@ Key files:
 **Output structure**:
 - `index.html` — Portfolio homepage with category grid (also a hardcoded fallback at repo root)
 - `latest/{CategoryName}.html` — Per-category gallery pages
+
+## GUI Portfolio Manager
+
+A Flask-based local web app for visually managing the portfolio — edit categories, upload/reorder images, change site settings, and deploy to GitHub Pages, all from the browser.
+
+### Running
+
+```bash
+python3 GUI.py
+```
+
+Starts a local server on `127.0.0.1:5555` (auto-selects next available port if busy) and opens the browser. Single-user, local-only — no auth needed.
+
+### Architecture
+
+The `gui/` package provides the backend; `GUI.py` is the entry point.
+
+- `gui/config_ops.py` — Read/write `config.yaml` (site name, navigation, footer).
+- `gui/file_ops.py` — CRUD operations for categories and images on the filesystem. Handles listing, creating, renaming, deleting categories, and adding, deleting, reordering images. Uses atomic two-phase renames for reordering.
+- `gui/thumbnail.py` — Pillow-based auto-generation of thumbnails on image upload.
+- `gui/git_ops.py` — Git status checks, deploy preflight validation, and the full deploy pipeline (generate site → git pull → commit → push) with step-by-step progress reporting.
+- `gui/api.py` — Flask Blueprint with all `/api/*` REST endpoints for categories, images, navigation, settings, and deploy.
+- `gui/templates/` — Jinja2 templates: `base.html` (shared layout), `index.html` (category grid), `category.html` (image grid with lightbox).
+- `gui/static/editor.css` — Styles for overlay buttons, modals, toasts, drop zones.
+- `gui/static/editor.js` — Frontend JS: API client, inline editing, modals, toasts, drag-and-drop (via SortableJS CDN).
+- `gui/static/deploy.js` — Deploy button flow, preflight check, progress modal.
+
+### Deploy Pipeline
+
+The "Deploy to Website" button runs: preflight checks (clean working tree, remote reachable) → `python3 -m portfolio` to regenerate HTML → `git pull --rebase` → `git add/commit` → `git push`. Each step reports success/failure independently so errors are easy to diagnose.

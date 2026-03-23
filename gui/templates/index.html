@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main class="wrap" id="work">
+  <section class="grid" id="categoryGrid" aria-label="Portfolio categories">
+    {% for cat in categories %}
+    <div class="card" data-name="{{ cat.name }}">
+      <a href="/category/{{ cat.name | urlencode }}">
+        <figure class="thumb">
+          {% if cat.thumbnail_url %}
+          <img src="{{ cat.thumbnail_url }}" alt="{{ cat.name }}" />
+          {% else %}
+          <div style="width:100%;height:100%;background:#e5e7eb;"></div>
+          {% endif %}
+        </figure>
+      </a>
+      <div class="label"><span class="category-name editable" data-name="{{ cat.name }}">{{ cat.name }}</span></div>
+      <div class="card-overlay">
+        <button class="edit-btn rename-category-btn" data-name="{{ cat.name }}" title="Rename">&#9998;</button>
+        <button class="delete-btn delete-category-btn" data-name="{{ cat.name }}" title="Delete">&#10005;</button>
+      </div>
+    </div>
+    {% endfor %}
+    <div class="card add-card" id="addCategoryCard">
+      <div class="thumb" style="display:flex;align-items:center;justify-content:center;">
+        <span style="font-size:48px;color:var(--muted)">+</span>
+      </div>
+      <div class="label">Add Category</div>
+    </div>
+  </section>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  // Add Category
+  const addCard = document.getElementById("addCategoryCard");
+  if (addCard) {
+    addCard.addEventListener("click", () => {
+      showPromptModal({
+        title: "New Category",
+        label: "Category name:",
+        placeholder: "e.g. Sketches",
+        onConfirm: async (name) => {
+          name = name.trim();
+          if (!name) return;
+          try {
+            await apiPost("/api/categories", { name });
+            window.location.reload();
+          } catch (err) {
+            showToast(err.message || "Failed to create category", "error");
+          }
+        },
+      });
+    });
+  }
+
+  // Rename Category
+  document.querySelectorAll(".rename-category-btn").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const oldName = btn.dataset.name;
+      showPromptModal({
+        title: "Rename Category",
+        label: "New name:",
+        placeholder: oldName,
+        value: oldName,
+        onConfirm: async (newName) => {
+          newName = newName.trim();
+          if (!newName || newName === oldName) return;
+          try {
+            await apiPut(`/api/categories/${encodeURIComponent(oldName)}`, { name: newName });
+            window.location.reload();
+          } catch (err) {
+            showToast(err.message || "Failed to rename category", "error");
+          }
+        },
+      });
+    });
+  });
+
+  // Delete Category
+  document.querySelectorAll(".delete-category-btn").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const name = btn.dataset.name;
+      showModal({
+        title: "Delete Category",
+        body: `Delete '${name}'? This will remove all images. This cannot be undone.`,
+        confirmText: "Delete",
+        isDanger: true,
+        onConfirm: async () => {
+          try {
+            await apiDelete(`/api/categories/${encodeURIComponent(name)}`, { confirm: true });
+            const card = btn.closest(".card");
+            if (card) card.remove();
+            showToast(`Deleted '${name}'`, "success");
+          } catch (err) {
+            showToast(err.message || "Failed to delete category", "error");
+          }
+        },
+      });
+    });
+  });
+
+  // Inline edit category name
+  document.querySelectorAll(".category-name.editable").forEach((el) => {
+    makeEditable(el, async (newName) => {
+      const oldName = el.dataset.name;
+      newName = newName.trim();
+      if (!newName || newName === oldName) return;
+      await apiPut(`/api/categories/${encodeURIComponent(oldName)}`, { name: newName });
+      el.dataset.name = newName;
+      window.location.reload();
+    });
+  });
+});
+</script>
+{% endblock %}

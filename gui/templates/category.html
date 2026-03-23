@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+  /* Page title */
+  .hero{max-width:var(--maxw);margin:24px auto 6px;padding:0 24px}
+  .hero h1{font-family:"Playfair Display",serif;font-size:38px;margin:18px 0 6px}
+  .hero p{margin:0;color:var(--muted)}
+
+  /* Gallery grid */
+  .wrap{max-width:var(--maxw);margin:14px auto 80px;padding:0 24px}
+  .grid{display:grid;gap:var(--gap,18px);grid-template-columns:repeat(12,1fr)}
+  .cell{grid-column:span 4;position:relative}
+  @media (max-width: 980px){.cell{grid-column:span 6}}
+  @media (max-width: 640px){.cell{grid-column:span 12}}
+
+  .tile{position:relative;display:block;width:100%;aspect-ratio:1/1;border-radius:10px;overflow:hidden;background:#f3f4f6;box-shadow:0 10px 25px rgba(0,0,0,.06);cursor:pointer;border:none;padding:0}
+  .tile img{width:100%;height:100%;display:block;object-fit:cover;transition:transform .45s ease, filter .45s ease}
+  .tile:hover img{transform:scale(1.05);filter:contrast(1.05)}
+
+  /* Lightbox overlay */
+  .lightbox{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(15,15,18,.85);backdrop-filter:blur(4px);z-index:50}
+  .lightbox.open{display:flex}
+  .lightbox__img{max-width:min(92vw,1400px);max-height:86vh;border-radius:8px;box-shadow:0 15px 45px rgba(0,0,0,.45)}
+  .lightbox__btn{position:absolute;top:50%;transform:translateY(-50%);border:none;background:rgba(255,255,255,.85);width:48px;height:48px;border-radius:999px;display:grid;place-items:center;cursor:pointer}
+  .lightbox__btn:focus{outline:2px solid var(--accent)}
+  .lightbox__prev{left:24px}
+  .lightbox__next{right:24px}
+  .lightbox__close{position:absolute;top:18px;right:18px;border:none;background:rgba(255,255,255,.9);width:42px;height:42px;border-radius:999px;display:grid;place-items:center;cursor:pointer}
+
+  .tile-overlay{position:absolute;top:8px;right:8px;display:flex;gap:6px;opacity:0;transition:opacity .2s}
+  .cell:hover .tile-overlay{opacity:1}
+
+  /* Drop zone overlay */
+  .drop-zone-overlay{position:fixed;inset:0;z-index:100;background:rgba(15,15,18,.7);backdrop-filter:blur(4px);align-items:center;justify-content:center;flex-direction:column}
+</style>
+
+<section class="hero">
+  <h1 class="editable" data-field="category_name" data-name="{{ category_name }}">{{ category_name }}</h1>
+</section>
+
+<main class="wrap">
+  <div class="grid" id="imageGrid">
+    {% for img in images %}
+    <div class="cell" data-filename="{{ img.filename }}">
+      <button class="tile" data-full="{{ img.full_url }}">
+        <img alt="{{ img.filename }}" src="{{ img.thumbnail_url }}">
+      </button>
+      <div class="tile-overlay">
+        <span class="drag-handle" title="Drag to reorder">&#10303;</span>
+        <button class="delete-btn delete-image-btn" data-filename="{{ img.filename }}" title="Delete">&#10005;</button>
+      </div>
+    </div>
+    {% endfor %}
+    <div class="cell add-card" id="addImagesCard">
+      <div class="tile" style="display:flex;align-items:center;justify-content:center;flex-direction:column;cursor:pointer;">
+        <span style="font-size:48px;color:var(--muted)">+</span>
+        <span style="font-size:13px;color:var(--muted);margin-top:8px">Add Images</span>
+      </div>
+    </div>
+  </div>
+</main>
+
+<input type="file" id="fileInput" multiple accept="image/*" style="display:none">
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox">
+  <img class="lightbox__img" id="lightboxImg" alt="Expanded artwork" />
+  <button class="lightbox__btn lightbox__prev" id="prevBtn">&#10094;</button>
+  <button class="lightbox__btn lightbox__next" id="nextBtn">&#10095;</button>
+  <button class="lightbox__close" id="closeBtn">&#10005;</button>
+</div>
+<!-- Drop zone overlay -->
+<div class="drop-zone-overlay" id="dropZone" style="display:none">
+  <div>
+    <span style="font-size:64px">📁</span>
+    <p style="font-size:24px;color:var(--accent);font-weight:600">Drop images here</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Lightbox
+const gallery = Array.from(document.querySelectorAll('.tile[data-full]'));
+const lightbox = document.getElementById('lightbox');
+const lightboxImg = document.getElementById('lightboxImg');
+let currentIdx = 0;
+
+function openAt(idx) {
+  currentIdx = (idx + gallery.length) % gallery.length;
+  lightboxImg.src = gallery[currentIdx].getAttribute('data-full');
+  lightbox.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeLightbox() {
+  lightbox.classList.remove('open');
+  document.body.style.overflow = '';
+  lightboxImg.src = '';
+}
+function nextImg() { openAt(currentIdx + 1); }
+function prevImg() { openAt(currentIdx - 1); }
+
+gallery.forEach((el, idx) => el.addEventListener('click', () => openAt(idx)));
+document.getElementById('nextBtn').addEventListener('click', nextImg);
+document.getElementById('prevBtn').addEventListener('click', prevImg);
+document.getElementById('closeBtn').addEventListener('click', closeLightbox);
+lightbox.addEventListener('click', (e) => { if (e.target === lightbox) closeLightbox(); });
+window.addEventListener('keydown', (e) => {
+  if (!lightbox.classList.contains('open')) return;
+  if (e.key === 'Escape') closeLightbox();
+  if (e.key === 'ArrowRight') nextImg();
+  if (e.key === 'ArrowLeft') prevImg();
+});
+
+// Drag-and-drop reorder
+const categoryName = document.querySelector('.hero h1').dataset.name;
+
+async function handleReorder(evt) {
+  const cells = Array.from(document.querySelectorAll('#imageGrid .cell[data-filename]'));
+  const orderedFilenames = cells.map(c => c.dataset.filename);
+
+  try {
+    const renameMap = await apiPut(
+      `/api/categories/${encodeURIComponent(categoryName)}/images/reorder`,
+      { order: orderedFilenames }
+    );
+    // Update data-filename attributes and image src with new filenames
+    cells.forEach(cell => {
+      const oldName = cell.dataset.filename;
+      const newName = renameMap[oldName];
+      if (newName && newName !== oldName) {
+        cell.dataset.filename = newName;
+        const img = cell.querySelector('img');
+        if (img) {
+          img.alt = newName;
+          img.src = `/art/${encodeURIComponent(categoryName)}/thumbnails/${encodeURIComponent(newName)}`;
+        }
+        const tile = cell.querySelector('.tile[data-full]');
+        if (tile) {
+          tile.dataset.full = `/art/${encodeURIComponent(categoryName)}/${encodeURIComponent(newName)}`;
+        }
+        const delBtn = cell.querySelector('.delete-image-btn');
+        if (delBtn) delBtn.dataset.filename = newName;
+      }
+    });
+    showToast("Images reordered");
+  } catch (err) {
+    showToast(err.message || "Reorder failed", "error");
+    location.reload();
+  }
+}
+
+new Sortable(document.getElementById("imageGrid"), {
+  handle: ".drag-handle",
+  animation: 150,
+  ghostClass: "sortable-ghost",
+  chosenClass: "sortable-chosen",
+  filter: ".add-card",
+  onEnd: handleReorder
+});
+
+// File picker upload
+const IMAGE_EXTS = new Set([".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tif", ".tiff", ".webp", ".heic", ".heif"]);
+const fileInput = document.getElementById("fileInput");
+
+document.getElementById("addImagesCard").addEventListener("click", () => {
+  fileInput.click();
+});
+
+fileInput.addEventListener("change", () => {
+  uploadFiles(fileInput.files);
+});
+
+async function uploadFiles(fileList) {
+  const formData = new FormData();
+  let skipped = 0;
+  for (const file of fileList) {
+    const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
+    if (!IMAGE_EXTS.has(ext)) {
+      skipped++;
+      continue;
+    }
+    formData.append("images", file);
+  }
+  if (skipped > 0) {
+    showToast(`${skipped} non-image file(s) skipped`, "error");
+  }
+  if (!formData.has("images")) {
+    fileInput.value = "";
+    return;
+  }
+  try {
+    await apiUpload(`/api/categories/${encodeURIComponent(categoryName)}/images`, formData);
+    showToast(`Image(s) added`);
+    location.reload();
+  } catch (err) {
+    showToast(err.message || "Upload failed", "error");
+  }
+  fileInput.value = "";
+}
+
+// Delete image buttons
+document.querySelectorAll('.delete-image-btn').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const filename = btn.dataset.filename;
+    showModal({
+      title: "Delete Image",
+      body: "<p>Delete this image? This cannot be undone.</p>",
+      confirmText: "Delete",
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          await apiDelete(`/api/categories/${encodeURIComponent(categoryName)}/images/${encodeURIComponent(filename)}`);
+          const cell = btn.closest('.cell');
+          if (cell) {
+            cell.style.transition = 'opacity 0.3s ease';
+            cell.style.opacity = '0';
+            setTimeout(() => cell.remove(), 300);
+          }
+          showToast("Image deleted");
+        } catch (err) {
+          showToast(err.message || "Delete failed", "error");
+        }
+      }
+    });
+  });
+});
+
+// Drag-and-drop file upload
+(function() {
+  const dropZone = document.getElementById("dropZone");
+  let dragCounter = 0;
+
+  document.body.addEventListener("dragenter", (e) => {
+    e.preventDefault();
+    if (e.dataTransfer && e.dataTransfer.types.includes("Files")) {
+      dragCounter++;
+      dropZone.style.display = "flex";
+    }
+  });
+
+  document.body.addEventListener("dragover", (e) => {
+    e.preventDefault();
+  });
+
+  document.body.addEventListener("dragleave", (e) => {
+    e.preventDefault();
+    dragCounter--;
+    if (dragCounter <= 0) {
+      dragCounter = 0;
+      dropZone.style.display = "none";
+    }
+  });
+
+  document.body.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dragCounter = 0;
+    dropZone.style.display = "none";
+    if (e.dataTransfer && e.dataTransfer.files.length > 0) {
+      uploadFiles(e.dataTransfer.files);
+    }
+  });
+})();
+</script>
+{% endblock %}

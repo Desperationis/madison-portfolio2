@@ -1,2 +1,4 @@
 rich==14.2.0
 PyYAML==6.0.2
+Flask>=3.0
+Pillow>=10.0
