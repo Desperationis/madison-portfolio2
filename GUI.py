@@ -112,6 +112,14 @@ if __name__ == "__main__":
 
     if not shutil.which("git"):
         print("Warning: git is not available on PATH. Deploy functionality will not work.")
+    else:
+        print("Syncing to origin...")
+        try:
+            git_ops.sync_to_origin()
+            print("Synced — local repo matches origin.")
+        except RuntimeError as exc:
+            print(f"Error: Failed to sync with origin: {exc}", file=sys.stderr)
+            sys.exit(1)
 
     app = create_app()
 

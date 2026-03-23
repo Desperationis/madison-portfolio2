@@ -68,7 +68,7 @@ A Flask-based local web app for visually managing the portfolio — edit categor
 python3 GUI.py
 ```
 
-Starts a local server on `127.0.0.1:5555` (auto-selects next available port if busy) and opens the browser. Single-user, local-only — no auth needed.
+Starts a local server on `127.0.0.1:5555` (auto-selects next available port if busy) and opens the browser. Single-user, local-only — no auth needed. On startup, the GUI force-syncs to origin (fetch → hard reset → clean), so the local repo always matches the remote before any editing begins.
 
 ### Architecture
 
@@ -86,4 +86,4 @@ The `gui/` package provides the backend; `GUI.py` is the entry point.
 
 ### Deploy Pipeline
 
-The "Deploy to Website" button runs: preflight checks (clean working tree, remote reachable) → `python3 -m portfolio` to regenerate HTML → `git pull --rebase` → `git add/commit` → `git push`. Each step reports success/failure independently so errors are easy to diagnose.
+The "Deploy to Website" button runs: preflight checks (clean working tree, remote reachable) → `git pull --rebase` → `python3 -m portfolio` to regenerate HTML → `git add/commit` → `git push`. Each step reports success/failure independently so errors are easy to diagnose.

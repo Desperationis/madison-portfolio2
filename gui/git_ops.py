@@ -29,6 +29,47 @@ def _run_git(*args: str, timeout: int = 10) -> subprocess.CompletedProcess:
         ) from exc
 
 
+def sync_to_origin() -> None:
+    """Force-sync the local repo to match origin, discarding all local changes.
+
+    Runs: git fetch origin → git reset --hard origin/<branch> → git clean -fd.
+    Raises RuntimeError if any step fails.
+    """
+    if shutil.which("git") is None:
+        raise RuntimeError("git is not installed or not on PATH")
+
+    # Must be inside a repo
+    proc = _run_git("rev-parse", "--is-inside-work-tree")
+    if proc.returncode != 0:
+        raise RuntimeError("Not a git repository")
+
+    # Determine current branch
+    proc = _run_git("rev-parse", "--abbrev-ref", "HEAD")
+    if proc.returncode != 0 or not proc.stdout.strip():
+        raise RuntimeError("Cannot determine current branch (detached HEAD?)")
+    branch = proc.stdout.strip()
+
+    # Fetch latest from origin
+    logger.info("Fetching origin...")
+    proc = _run_git("fetch", "origin", timeout=30)
+    if proc.returncode != 0:
+        raise RuntimeError(f"git fetch origin failed: {proc.stderr}")
+
+    # Hard reset to origin/<branch>
+    logger.info("Resetting to origin/%s...", branch)
+    proc = _run_git("reset", "--hard", f"origin/{branch}")
+    if proc.returncode != 0:
+        raise RuntimeError(f"git reset --hard failed: {proc.stderr}")
+
+    # Remove untracked files/dirs
+    logger.info("Cleaning untracked files...")
+    proc = _run_git("clean", "-fd")
+    if proc.returncode != 0:
+        raise RuntimeError(f"git clean -fd failed: {proc.stderr}")
+
+    logger.info("Synced to origin/%s", branch)
+
+
 def check_git_status() -> dict:
     """Return a dict describing the current git repository status."""
     result = {
@@ -144,7 +185,7 @@ def _make_step(name: str, *, success: bool = False, output: str = "",
 
 
 def deploy(commit_message: str = "Update portfolio") -> dict:
-    """Run the full deploy pipeline: generate → stage → commit → pull → push.
+    """Run the full deploy pipeline: pull → generate → stage → commit → push.
 
     Returns a dict with keys:
         success (bool): True if all steps completed successfully.
@@ -152,11 +193,11 @@ def deploy(commit_message: str = "Update portfolio") -> dict:
         error (str | None): Top-level error message, or None on success.
     """
     step_names = [
+        "Pulling latest",
         "Generating site",
         "Staging changes",
         "Checking for changes",
         "Committing",
-        "Pulling latest",
         "Pushing",
     ]
     steps: list[dict] = []
@@ -175,7 +216,23 @@ def deploy(commit_message: str = "Update portfolio") -> dict:
 
     logger.info("Starting deploy with message: %s", commit_message)
 
-    # Step 1: Generate site
+    # Step 1: Pull latest
+    step = _make_step("Pulling latest")
+    steps.append(step)
+    branch_proc = _run_git("rev-parse", "--abbrev-ref", "HEAD")
+    branch = branch_proc.stdout.strip() if branch_proc.returncode == 0 else "main"
+    try:
+        proc = _run_git("pull", "--rebase", "origin", branch, timeout=30)
+        step["output"] = proc.stdout
+        if proc.returncode != 0:
+            error_msg = (proc.stderr or "Failed to pull latest changes") + \
+                "\nTry running `git rebase --abort` to undo, then resolve conflicts manually."
+            return _fail(step, error_msg)
+        step["success"] = True
+    except RuntimeError as exc:
+        return _fail(step, str(exc))
+
+    # Step 2: Generate site
     step = _make_step("Generating site")
     steps.append(step)
     try:
@@ -193,7 +250,7 @@ def deploy(commit_message: str = "Update portfolio") -> dict:
     except subprocess.TimeoutExpired:
         return _fail(step, "Site generation timed out after 60s")
 
-    # Step 2: Stage changes
+    # Step 3: Stage changes
     step = _make_step("Staging changes")
     steps.append(step)
     try:
@@ -205,7 +262,7 @@ def deploy(commit_message: str = "Update portfolio") -> dict:
     except RuntimeError as exc:
         return _fail(step, str(exc))
 
-    # Step 3: Check for changes
+    # Step 4: Check for changes
     step = _make_step("Checking for changes")
     steps.append(step)
     try:
@@ -217,14 +274,14 @@ def deploy(commit_message: str = "Update portfolio") -> dict:
             step["success"] = True
             step["output"] = "No changes to deploy"
             # Mark remaining steps as skipped
-            for name in step_names[3:]:
+            for name in step_names[4:]:
                 steps.append(_make_step(name, skipped=True))
             return {"success": True, "steps": steps, "error": None}
         step["success"] = True
     except RuntimeError as exc:
         return _fail(step, str(exc))
 
-    # Step 4: Commit
+    # Step 5: Commit
     step = _make_step("Committing")
     steps.append(step)
     try:
@@ -232,23 +289,6 @@ def deploy(commit_message: str = "Update portfolio") -> dict:
         step["output"] = proc.stdout
         if proc.returncode != 0:
             return _fail(step, proc.stderr or "Failed to commit")
-        step["success"] = True
-    except RuntimeError as exc:
-        return _fail(step, str(exc))
-
-    # Step 5: Pull latest
-    step = _make_step("Pulling latest")
-    steps.append(step)
-    # Determine current branch
-    branch_proc = _run_git("rev-parse", "--abbrev-ref", "HEAD")
-    branch = branch_proc.stdout.strip() if branch_proc.returncode == 0 else "main"
-    try:
-        proc = _run_git("pull", "--rebase", "origin", branch, timeout=30)
-        step["output"] = proc.stdout
-        if proc.returncode != 0:
-            error_msg = (proc.stderr or "Failed to pull latest changes") + \
-                "\nTry running `git rebase --abort` to undo, then resolve conflicts manually."
-            return _fail(step, error_msg)
         step["success"] = True
     except RuntimeError as exc:
         return _fail(step, str(exc))
