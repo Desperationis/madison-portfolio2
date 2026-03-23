@@ -13,11 +13,12 @@ import yaml
 # Patch CONFIG_PATH before importing anything that reads it
 import gui.config_ops as config_ops
 import gui.file_ops as file_ops
+import portfolio.manifest as manifest_mod
 
 
 @pytest.fixture(autouse=True)
 def temp_config(tmp_path, monkeypatch):
-    """Create a temporary config.yaml and art/ directory for each test."""
+    """Create a temporary config.yaml, art/ directory, and portfolio.json for each test."""
     config_data = {
         "site_name": "Test Portfolio",
         "navigation": [
@@ -32,8 +33,13 @@ def temp_config(tmp_path, monkeypatch):
     # Create art/ directory
     (tmp_path / "art").mkdir()
 
+    # Create empty manifest
+    manifest_file = tmp_path / "portfolio.json"
+    manifest_file.write_text(json.dumps({"categories": []}, indent=2))
+
     monkeypatch.setattr(config_ops, "CONFIG_PATH", config_file)
     monkeypatch.setattr(file_ops, "ART_DIR", tmp_path / "art")
+    monkeypatch.setattr(manifest_mod, "MANIFEST_PATH", manifest_file)
 
 
 @pytest.fixture
@@ -267,14 +273,26 @@ class TestImageEndpoints:
         thumb_dir = cat_dir / "thumbnails"
         thumb_dir.mkdir(exist_ok=True)
 
+        filenames = []
         for i in range(1, count + 1):
+            filename = f"test_{i}.jpg"
             img = Image.new("RGB", (100, 100), color="red")
-            img.save(str(cat_dir / f"test_{i}.jpg"), "JPEG")
+            img.save(str(cat_dir / filename), "JPEG")
             thumb = Image.new("RGB", (50, 50), color="red")
-            thumb.save(str(thumb_dir / f"test_{i}.jpg"), "JPEG")
+            thumb.save(str(thumb_dir / filename), "JPEG")
+            filenames.append(filename)
+
+        # Update manifest with category and images
+        manifest = manifest_mod.read_manifest()
+        manifest["categories"].append({
+            "name": "TestCategory",
+            "preview": None,
+            "images": filenames,
+        })
+        manifest_mod.write_manifest(manifest)
 
     def test_list_images(self, client):
-        """GET /api/categories/TestCategory/images returns 3 images in correct sort order."""
+        """GET /api/categories/TestCategory/images returns 3 images in manifest order."""
         self._setup_category_with_images(3)
 
         resp = client.get("/api/categories/TestCategory/images")
@@ -282,18 +300,13 @@ class TestImageEndpoints:
         images = resp.get_json()
         assert len(images) == 3
 
-        # Verify correct sort order by sort_key
-        sort_keys = [img["sort_key"] for img in images]
-        assert sort_keys == [1, 2, 3]
-
-        # Verify filenames
+        # Verify filenames in manifest order
         filenames = [img["filename"] for img in images]
         assert filenames == ["test_1.jpg", "test_2.jpg", "test_3.jpg"]
 
         # Verify each image has expected fields
         for img in images:
             assert "filename" in img
-            assert "sort_key" in img
             assert "has_thumbnail" in img
             assert "full_url" in img
             assert "thumbnail_url" in img
@@ -343,7 +356,7 @@ class TestImageEndpoints:
         assert not (cat_dir / "thumbnails" / "test_1.jpg").exists()
 
     def test_reorder_images(self, client):
-        """Reorder images in reversed order, verify files renamed with correct numeric suffixes."""
+        """Reorder images via manifest without renaming files on disk."""
         self._setup_category_with_images(3)
 
         # Reverse the order: test_3, test_2, test_1
@@ -352,24 +365,21 @@ class TestImageEndpoints:
             json={"order": ["test_3.jpg", "test_2.jpg", "test_1.jpg"]},
         )
         assert resp.status_code == 200
-        rename_map = resp.get_json()
-        assert isinstance(rename_map, dict)
+        result = resp.get_json()
+        assert isinstance(result, dict)
+        # Identity mapping — no renames
+        assert result == {"test_3.jpg": "test_3.jpg", "test_2.jpg": "test_2.jpg", "test_1.jpg": "test_1.jpg"}
 
-        # Verify files on disk have correct numeric suffixes after reorder
+        # Verify files on disk are UNCHANGED
         cat_dir = file_ops.ART_DIR / "TestCategory"
-        # List what's on disk now
-        images_on_disk = sorted(
-            f.name for f in cat_dir.iterdir()
-            if f.is_file() and f.suffix.lower() in {".jpg"}
-        )
-        # Should have 3 files with _1, _2, _3 suffixes
-        assert len(images_on_disk) == 3
-        # Verify via API that sort order is correct
+        for name in ["test_1.jpg", "test_2.jpg", "test_3.jpg"]:
+            assert (cat_dir / name).exists()
+
+        # Verify manifest order changed
         resp = client.get("/api/categories/TestCategory/images")
         images = resp.get_json()
-        assert images[0]["sort_key"] == 1
-        assert images[1]["sort_key"] == 2
-        assert images[2]["sort_key"] == 3
+        filenames = [img["filename"] for img in images]
+        assert filenames == ["test_3.jpg", "test_2.jpg", "test_1.jpg"]
 
     def test_upload_invalid_file(self, client, tmp_path):
         """Upload a .txt file, verify 400."""
@@ -432,15 +442,12 @@ class TestImageEndpoints:
         rename_map = resp.get_json()
         assert isinstance(rename_map, dict)
 
-        # List — verify new order (painting_2 should now be _1, painting_1 should now be _2)
+        # List — verify both images still present after reorder
         resp = client.get("/api/categories/TestArt/images")
         assert resp.status_code == 200
         images = resp.get_json()
         filenames = [img["filename"] for img in images]
         assert len(filenames) == 2
-        # After reorder, sort keys should reflect new ordering
-        assert images[0]["sort_key"] == 1
-        assert images[1]["sort_key"] == 2
 
         # Delete the first image
         first_filename = images[0]["filename"]
@@ -515,6 +522,87 @@ class TestValidationErrors:
                 data={"images": (f, "notes.txt")},
                 content_type="multipart/form-data",
             )
+        assert resp.status_code == 400
+
+
+class TestPreviewEndpoint:
+    """Tests for PUT /api/categories/<name>/preview."""
+
+    def _setup_category_with_images(self):
+        """Create TestCategory with images for preview tests."""
+        from PIL import Image
+
+        cat_dir = file_ops.ART_DIR / "TestCategory"
+        cat_dir.mkdir(parents=True, exist_ok=True)
+        thumb_dir = cat_dir / "thumbnails"
+        thumb_dir.mkdir(exist_ok=True)
+
+        filenames = ["alpha.jpg", "beta.jpg"]
+        for fn in filenames:
+            img = Image.new("RGB", (100, 100), color="red")
+            img.save(str(cat_dir / fn), "JPEG")
+            img.save(str(thumb_dir / fn), "JPEG")
+
+        manifest = manifest_mod.read_manifest()
+        manifest["categories"].append({
+            "name": "TestCategory",
+            "preview": None,
+            "images": filenames,
+        })
+        manifest_mod.write_manifest(manifest)
+
+    def test_set_preview(self, client):
+        """Set preview to a specific image."""
+        self._setup_category_with_images()
+        resp = client.put(
+            "/api/categories/TestCategory/preview",
+            json={"filename": "beta.jpg"},
+        )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["preview"] == "beta.jpg"
+        assert "beta.jpg" in data["thumbnail_url"]
+
+        # Verify manifest was updated
+        m = manifest_mod.read_manifest()
+        cat = next(c for c in m["categories"] if c["name"] == "TestCategory")
+        assert cat["preview"] == "beta.jpg"
+
+    def test_reset_preview_to_null(self, client):
+        """Reset preview to null (first image default)."""
+        self._setup_category_with_images()
+        # Set then reset
+        client.put("/api/categories/TestCategory/preview", json={"filename": "beta.jpg"})
+        resp = client.put("/api/categories/TestCategory/preview", json={"filename": None})
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["preview"] is None
+        assert "alpha.jpg" in data["thumbnail_url"]
+
+    def test_set_preview_nonexistent_image(self, client):
+        """Set preview to an image not in the category → 400."""
+        self._setup_category_with_images()
+        resp = client.put(
+            "/api/categories/TestCategory/preview",
+            json={"filename": "nope.jpg"},
+        )
+        assert resp.status_code == 400
+
+    def test_set_preview_nonexistent_category(self, client):
+        """Set preview on missing category → 404."""
+        resp = client.put(
+            "/api/categories/NoSuchCat/preview",
+            json={"filename": "x.jpg"},
+        )
+        assert resp.status_code == 404
+
+    def test_set_preview_missing_body(self, client):
+        """Missing filename key → 400."""
+        self._setup_category_with_images()
+        resp = client.put(
+            "/api/categories/TestCategory/preview",
+            json={"wrong_key": "value"},
+        )
         assert resp.status_code == 400
 
 

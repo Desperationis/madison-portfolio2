@@ -260,9 +260,16 @@ function makeEditable(element, onSave) {
   }
 
   function startEdit(e) {
-    e.stopPropagation();
     if (element.querySelector(".editable-input")) return;
+    e.stopPropagation();
+    e.preventDefault();
     const originalText = element.textContent;
+
+    // Block navigation on the parent anchor while editing
+    const parentLink = element.closest("a");
+    function blockNav(evt) { evt.preventDefault(); }
+    if (parentLink) parentLink.addEventListener("click", blockNav);
+
     const input = document.createElement("input");
     input.type = "text";
     input.className = "editable-input";
@@ -277,6 +284,7 @@ function makeEditable(element, onSave) {
     async function save() {
       if (saving) return;
       saving = true;
+      if (parentLink) parentLink.removeEventListener("click", blockNav);
       const newValue = input.value;
       try {
         await onSave(newValue);
@@ -288,6 +296,7 @@ function makeEditable(element, onSave) {
     }
 
     function cancel() {
+      if (parentLink) parentLink.removeEventListener("click", blockNav);
       element.textContent = originalText;
     }
 
@@ -349,15 +358,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Wire up nav edit buttons
   document.querySelectorAll(".nav-edit-btn").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
+    btn.addEventListener("click", async (e) => {
       e.stopPropagation();
       const index = btn.dataset.index;
       const navItem = document.querySelector(`.nav-item[data-index="${index}"]`);
       if (!navItem || navItem.classList.contains("editing")) return;
 
+      let files = [];
+      try { files = await apiGet("/api/files"); } catch (e) {}
+
       const originalLabel = navItem.textContent;
       const originalUrl = navItem.getAttribute("href");
       navItem.classList.add("editing");
+
+      // Prevent anchor navigation while editing
+      function preventNavClick(e) {
+        e.preventDefault();
+      }
+      navItem.addEventListener("click", preventNavClick);
 
       // Build inline edit form
       const form = document.createElement("span");
@@ -368,10 +386,26 @@ document.addEventListener("DOMContentLoaded", () => {
       labelInput.value = originalLabel;
       labelInput.placeholder = "Label";
 
-      const urlInput = document.createElement("input");
-      urlInput.type = "text";
-      urlInput.value = originalUrl;
-      urlInput.placeholder = "URL";
+      const urlSelect = document.createElement("select");
+      const placeholderOpt = document.createElement("option");
+      placeholderOpt.value = "";
+      placeholderOpt.textContent = "-- Select file --";
+      urlSelect.appendChild(placeholderOpt);
+      files.forEach(f => {
+        const opt = document.createElement("option");
+        opt.value = f;
+        opt.textContent = f;
+        if (f === originalUrl) opt.selected = true;
+        urlSelect.appendChild(opt);
+      });
+      // If current URL isn't in the file list, add it as an option
+      if (originalUrl && !files.includes(originalUrl)) {
+        const opt = document.createElement("option");
+        opt.value = originalUrl;
+        opt.textContent = originalUrl;
+        opt.selected = true;
+        urlSelect.insertBefore(opt, urlSelect.children[1]);
+      }
 
       const saveBtn = document.createElement("button");
       saveBtn.className = "btn-save";
@@ -384,7 +418,7 @@ document.addEventListener("DOMContentLoaded", () => {
       cancelBtn.title = "Cancel";
 
       form.appendChild(labelInput);
-      form.appendChild(urlInput);
+      form.appendChild(urlSelect);
       form.appendChild(saveBtn);
       form.appendChild(cancelBtn);
 
@@ -398,20 +432,23 @@ document.addEventListener("DOMContentLoaded", () => {
         navItem.textContent = originalLabel;
         navItem.setAttribute("href", originalUrl);
         navItem.classList.remove("editing");
+        navItem.removeEventListener("click", preventNavClick);
         btn.style.display = "";
       }
 
       cancelBtn.addEventListener("click", (e) => {
         e.stopPropagation();
+        e.preventDefault();
         restoreOriginal();
       });
 
       saveBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
+        e.preventDefault();
         const newLabel = labelInput.value.trim();
-        const newUrl = urlInput.value.trim();
+        const newUrl = urlSelect.value;
         if (!newLabel || !newUrl) {
-          showToast("Label and URL cannot be empty", "error");
+          showToast("Label and file cannot be empty", "error");
           return;
         }
         try {
@@ -419,6 +456,7 @@ document.addEventListener("DOMContentLoaded", () => {
           navItem.textContent = newLabel;
           navItem.setAttribute("href", newUrl);
           navItem.classList.remove("editing");
+          navItem.removeEventListener("click", preventNavClick);
           btn.style.display = "";
           showToast("Navigation item updated", "success");
         } catch (err) {
@@ -428,7 +466,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       // Handle Enter/Escape in inputs
-      [labelInput, urlInput].forEach((input) => {
+      [labelInput, urlSelect].forEach((input) => {
         input.addEventListener("keydown", (e) => {
           if (e.key === "Enter") {
             e.preventDefault();
@@ -475,22 +513,100 @@ document.addEventListener("DOMContentLoaded", () => {
   // Wire up add nav button
   const addNavBtn = document.getElementById("addNavBtn");
   if (addNavBtn) {
-    addNavBtn.addEventListener("click", () => {
-      showTwoFieldPromptModal({
-        title: "Add Navigation Item",
-        label1: "Label",
-        placeholder1: "e.g. Blog",
-        label2: "URL",
-        placeholder2: "e.g. /blog",
-        onConfirm: async (label, url) => {
-          try {
-            await apiPost("/api/navigation", { label, url });
-            window.location.reload();
-          } catch (err) {
-            showToast(err.message || "Failed to add nav item", "error");
-          }
-        },
+    addNavBtn.addEventListener("click", async () => {
+      let files = [];
+      try {
+        files = await apiGet("/api/files");
+      } catch (e) {}
+
+      const overlay = document.getElementById("modalOverlay");
+      const modal = document.createElement("div");
+      modal.className = "modal";
+
+      const titleEl = document.createElement("h2");
+      titleEl.className = "modal-title";
+      titleEl.textContent = "Add Navigation Item";
+
+      const bodyEl = document.createElement("div");
+      bodyEl.className = "modal-body";
+
+      const lbl1 = document.createElement("label");
+      lbl1.textContent = "Label";
+      lbl1.style.cssText = "display:block;margin-bottom:4px;";
+      const input1 = document.createElement("input");
+      input1.type = "text";
+      input1.placeholder = "e.g. Blog";
+      input1.style.cssText = "width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;font:inherit;box-sizing:border-box;margin-bottom:12px;";
+
+      const lbl2 = document.createElement("label");
+      lbl2.textContent = "Link to file";
+      lbl2.style.cssText = "display:block;margin-bottom:4px;";
+      const select = document.createElement("select");
+      select.style.cssText = "width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;font:inherit;box-sizing:border-box;";
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = "-- Select a file --";
+      select.appendChild(placeholder);
+      files.forEach(f => {
+        const opt = document.createElement("option");
+        opt.value = f;
+        opt.textContent = f;
+        select.appendChild(opt);
       });
+
+      const errorEl = document.createElement("div");
+      errorEl.style.cssText = "color:#e53e3e;font-size:13px;margin-top:8px;display:none;";
+
+      bodyEl.appendChild(lbl1);
+      bodyEl.appendChild(input1);
+      bodyEl.appendChild(lbl2);
+      bodyEl.appendChild(select);
+      bodyEl.appendChild(errorEl);
+
+      const actions = document.createElement("div");
+      actions.className = "modal-actions";
+
+      const cancelBtn = document.createElement("button");
+      cancelBtn.className = "btn-cancel";
+      cancelBtn.textContent = "Cancel";
+      cancelBtn.addEventListener("click", closeModal);
+      actions.appendChild(cancelBtn);
+
+      const confirmBtn = document.createElement("button");
+      confirmBtn.className = "btn-primary";
+      confirmBtn.textContent = "OK";
+      confirmBtn.addEventListener("click", async () => {
+        const label = input1.value.trim();
+        const url = select.value;
+        if (!label || !url) {
+          errorEl.textContent = "Both fields are required.";
+          errorEl.style.display = "block";
+          return;
+        }
+        try {
+          await apiPost("/api/navigation", { label, url });
+          window.location.reload();
+        } catch (err) {
+          showToast(err.message || "Failed to add nav item", "error");
+        }
+        closeModal();
+      });
+      actions.appendChild(confirmBtn);
+
+      modal.appendChild(titleEl);
+      modal.appendChild(bodyEl);
+      modal.appendChild(actions);
+      overlay.innerHTML = "";
+      overlay.appendChild(modal);
+      overlay.classList.add("active");
+
+      function onKeydown(e) {
+        if (e.key === "Escape") closeModal();
+        else if (e.key === "Enter") { e.preventDefault(); confirmBtn.click(); }
+      }
+      document.addEventListener("keydown", onKeydown);
+      overlay._keydownHandler = onKeydown;
+      input1.focus();
     });
   }
 
@@ -499,7 +615,9 @@ document.addEventListener("DOMContentLoaded", () => {
   if (menuEl) {
     new Sortable(menuEl, {
       animation: 150,
+      draggable: ".nav-group",
       filter: ".add-nav-btn, .nav-edit-btn, .nav-delete-btn",
+      preventOnFilter: false,
       onEnd: handleNavReorder,
     });
   }

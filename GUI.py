@@ -13,6 +13,7 @@ from werkzeug.exceptions import HTTPException
 
 from gui import config_ops, file_ops, git_ops
 from gui.api import api
+from portfolio.manifest import get_category as _get_manifest_category
 
 
 def create_app():
@@ -59,11 +60,14 @@ def create_app():
         except FileNotFoundError:
             abort(404, description=f"Category '{name}' not found")
         git_status = git_ops.check_git_status()
+        cat_entry = _get_manifest_category(name)
+        preview_filename = (cat_entry or {}).get("preview")
         return render_template(
             "category.html",
             config=config,
             category_name=name,
             images=images,
+            preview_filename=preview_filename,
             git_status=git_status,
         )
 

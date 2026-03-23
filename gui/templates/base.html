@@ -98,13 +98,15 @@
   <header class="topbar" role="banner">
     <nav class="nav" aria-label="Primary">
       <div class="brand" aria-label="Site title">
-        <a href="/"><span class="editable" data-field="site_name">{{ config.site_name }}</span></a>
+        <a href="/">{{ config.site_name }}</a>
       </div>
       <div class="menu" role="menubar">
         {% for item in config.navigation %}
-        <a href="{{ item.url }}" class="nav-item" data-index="{{ loop.index0 }}" role="menuitem">{{ item.label }}</a>
-        <button class="edit-btn nav-edit-btn" data-index="{{ loop.index0 }}">&#9998;</button>
-        <button class="delete-btn nav-delete-btn" data-index="{{ loop.index0 }}">&times;</button>
+        <span class="nav-group">
+          <a href="{{ item.url }}" class="nav-item" data-index="{{ loop.index0 }}" role="menuitem">{{ item.label }}</a>
+          <button class="nav-edit-btn" data-index="{{ loop.index0 }}">&#9998;</button>
+          <button class="nav-delete-btn" data-index="{{ loop.index0 }}">&times;</button>
+        </span>
         {% endfor %}
         <button class="add-nav-btn" id="addNavBtn">+</button>
       </div>

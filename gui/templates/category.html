@@ -28,8 +28,25 @@
   .lightbox__next{right:24px}
   .lightbox__close{position:absolute;top:18px;right:18px;border:none;background:rgba(255,255,255,.9);width:42px;height:42px;border-radius:999px;display:grid;place-items:center;cursor:pointer}
 
-  .tile-overlay{position:absolute;top:8px;right:8px;display:flex;gap:6px;opacity:0;transition:opacity .2s}
-  .cell:hover .tile-overlay{opacity:1}
+  .cell .tile-overlay{position:absolute;top:8px;right:8px;bottom:auto;left:auto;background:transparent;display:flex;gap:6px;opacity:0;pointer-events:none;transition:opacity .2s;padding:0;z-index:10}
+  .cell:hover .tile-overlay{opacity:1;pointer-events:auto}
+  .cell .tile-overlay .drag-handle{width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;display:flex;align-items:center;justify-content:center;cursor:grab}
+  .cell .tile-overlay .settings-image-btn{width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;font-size:14px;padding:0}
+  .cell .tile-overlay .settings-image-btn:hover{background:rgba(90,167,255,.9)}
+  .cell .tile-overlay .preview-btn{width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;font-size:12px;padding:0}
+  .cell .tile-overlay .preview-btn:hover{background:rgba(90,167,255,.9)}
+  .cell .tile-overlay .preview-btn.is-preview{background:rgba(234,179,8,.85)}
+  .cell.is-preview-cell .tile{outline:3px solid rgba(234,179,8,.85);outline-offset:-3px}
+
+  .crop-container{position:relative;margin:0 auto;user-select:none;-webkit-user-select:none;overflow:hidden;border-radius:6px;background:#1a1a1a}
+  .crop-container img{display:block;pointer-events:none}
+  .crop-region{position:absolute;border:2px solid rgba(255,255,255,.9);box-shadow:0 0 0 9999px rgba(0,0,0,.5);cursor:move;box-sizing:border-box}
+  .crop-handle{position:absolute;width:14px;height:14px;background:#fff;border:1.5px solid rgba(0,0,0,.3);border-radius:2px;z-index:2}
+  .crop-handle.nw{top:-7px;left:-7px;cursor:nw-resize}
+  .crop-handle.ne{top:-7px;right:-7px;cursor:ne-resize}
+  .crop-handle.sw{bottom:-7px;left:-7px;cursor:sw-resize}
+  .crop-handle.se{bottom:-7px;right:-7px;cursor:se-resize}
+  .crop-hint{text-align:center;color:var(--muted);font-size:12px;margin-top:8px}
 
   /* Drop zone overlay */
   .drop-zone-overlay{position:fixed;inset:0;z-index:100;background:rgba(15,15,18,.7);backdrop-filter:blur(4px);align-items:center;justify-content:center;flex-direction:column}
@@ -42,12 +59,14 @@
 <main class="wrap">
   <div class="grid" id="imageGrid">
     {% for img in images %}
-    <div class="cell" data-filename="{{ img.filename }}">
+    <div class="cell{% if img.filename == (preview_filename or (images[0].filename if images else '')) %} is-preview-cell{% endif %}" data-filename="{{ img.filename }}">
       <button class="tile" data-full="{{ img.full_url }}">
         <img alt="{{ img.filename }}" src="{{ img.thumbnail_url }}">
       </button>
       <div class="tile-overlay">
         <span class="drag-handle" title="Drag to reorder">&#10303;</span>
+        <button class="preview-btn{% if img.filename == (preview_filename or (images[0].filename if images else '')) %} is-preview{% endif %}" data-filename="{{ img.filename }}" title="Set as category preview">&#9733;</button>
+        <button class="settings-image-btn" data-filename="{{ img.filename }}" title="Crop thumbnail">&#9881;</button>
         <button class="delete-btn delete-image-btn" data-filename="{{ img.filename }}" title="Delete">&#10005;</button>
       </div>
     </div>
@@ -121,30 +140,12 @@ async function handleReorder(evt) {
   const orderedFilenames = cells.map(c => c.dataset.filename);
 
   try {
-    const renameMap = await apiPut(
+    await apiPut(
       `/api/categories/${encodeURIComponent(categoryName)}/images/reorder`,
       { order: orderedFilenames }
     );
-    // Update data-filename attributes and image src with new filenames
-    cells.forEach(cell => {
-      const oldName = cell.dataset.filename;
-      const newName = renameMap[oldName];
-      if (newName && newName !== oldName) {
-        cell.dataset.filename = newName;
-        const img = cell.querySelector('img');
-        if (img) {
-          img.alt = newName;
-          img.src = `/art/${encodeURIComponent(categoryName)}/thumbnails/${encodeURIComponent(newName)}`;
-        }
-        const tile = cell.querySelector('.tile[data-full]');
-        if (tile) {
-          tile.dataset.full = `/art/${encodeURIComponent(categoryName)}/${encodeURIComponent(newName)}`;
-        }
-        const delBtn = cell.querySelector('.delete-image-btn');
-        if (delBtn) delBtn.dataset.filename = newName;
-      }
-    });
     showToast("Images reordered");
+    location.reload();
   } catch (err) {
     showToast(err.message || "Reorder failed", "error");
     location.reload();
@@ -227,6 +228,269 @@ document.querySelectorAll('.delete-image-btn').forEach(btn => {
     });
   });
 });
+
+// Set as preview buttons
+document.querySelectorAll('.preview-btn').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const filename = btn.dataset.filename;
+    const isAlreadyPreview = btn.classList.contains('is-preview');
+    // If already the preview, reset to default (null = first image)
+    const newFilename = isAlreadyPreview ? null : filename;
+    (async () => {
+      try {
+        await apiPut(
+          `/api/categories/${encodeURIComponent(categoryName)}/preview`,
+          { filename: newFilename }
+        );
+        // Update UI: remove old highlights
+        document.querySelectorAll('.cell.is-preview-cell').forEach(c => c.classList.remove('is-preview-cell'));
+        document.querySelectorAll('.preview-btn.is-preview').forEach(b => b.classList.remove('is-preview'));
+        // If we set a specific image (not reset), highlight it
+        if (newFilename) {
+          const cell = btn.closest('.cell');
+          if (cell) cell.classList.add('is-preview-cell');
+          btn.classList.add('is-preview');
+          showToast("Preview set");
+        } else {
+          // Reset = first image becomes preview
+          const firstCell = document.querySelector('#imageGrid .cell[data-filename]');
+          if (firstCell) {
+            firstCell.classList.add('is-preview-cell');
+            const firstBtn = firstCell.querySelector('.preview-btn');
+            if (firstBtn) firstBtn.classList.add('is-preview');
+          }
+          showToast("Preview reset to first image");
+        }
+      } catch (err) {
+        showToast(err.message || "Failed to set preview", "error");
+      }
+    })();
+  });
+});
+
+// Image settings — thumbnail crop tool
+document.querySelectorAll('.settings-image-btn').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const filename = btn.dataset.filename;
+    const fullUrl = btn.closest('.cell').querySelector('.tile').dataset.full;
+
+    // Preload full image to get natural dimensions
+    const preload = new Image();
+    preload.onload = () => openCropModal(filename, fullUrl, preload.naturalWidth, preload.naturalHeight);
+    preload.onerror = () => showToast("Failed to load image", "error");
+    preload.src = fullUrl;
+  });
+});
+
+function openCropModal(filename, fullUrl, natW, natH) {
+  const overlay = document.getElementById("modalOverlay");
+  const modal = document.createElement("div");
+  modal.className = "modal";
+  modal.style.maxWidth = "560px";
+
+  const titleEl = document.createElement("h2");
+  titleEl.className = "modal-title";
+  titleEl.textContent = "Crop Thumbnail";
+
+  const bodyEl = document.createElement("div");
+  bodyEl.className = "modal-body";
+
+  const nameEl = document.createElement("p");
+  nameEl.style.cssText = "color:var(--muted);font-size:13px;margin:0 0 10px";
+  nameEl.textContent = filename;
+  bodyEl.appendChild(nameEl);
+
+  // Scale image to fit modal
+  const maxDisp = 450;
+  const scale = Math.min(maxDisp / natW, maxDisp / natH, 1);
+  const dispW = Math.round(natW * scale);
+  const dispH = Math.round(natH * scale);
+
+  const container = document.createElement("div");
+  container.className = "crop-container";
+  container.style.width = dispW + "px";
+  container.style.height = dispH + "px";
+
+  const imgEl = document.createElement("img");
+  imgEl.src = fullUrl;
+  imgEl.style.width = dispW + "px";
+  imgEl.style.height = dispH + "px";
+  container.appendChild(imgEl);
+
+  // Crop region — start with centered square (matches auto-thumbnail)
+  const initSize = Math.min(dispW, dispH);
+  let cropX = Math.round((dispW - initSize) / 2);
+  let cropY = Math.round((dispH - initSize) / 2);
+  let cropSize = initSize;
+  const minCrop = 30;
+
+  const cropEl = document.createElement("div");
+  cropEl.className = "crop-region";
+  container.appendChild(cropEl);
+
+  // Corner resize handles
+  ['nw','ne','sw','se'].forEach(c => {
+    const h = document.createElement("div");
+    h.className = "crop-handle " + c;
+    h.dataset.corner = c;
+    cropEl.appendChild(h);
+  });
+
+  function updateCrop() {
+    cropEl.style.left = cropX + "px";
+    cropEl.style.top = cropY + "px";
+    cropEl.style.width = cropSize + "px";
+    cropEl.style.height = cropSize + "px";
+  }
+  updateCrop();
+
+  bodyEl.appendChild(container);
+
+  const hint = document.createElement("div");
+  hint.className = "crop-hint";
+  hint.textContent = "Drag to move, corners to resize";
+  bodyEl.appendChild(hint);
+
+  // --- Interaction ---
+  let mode = null; // 'move' | 'resize'
+  let corner = null;
+  let startMX, startMY, startCX, startCY, startCS;
+
+  function onPointerDown(e) {
+    e.preventDefault();
+    const t = e.target;
+    if (t.dataset && t.dataset.corner) {
+      mode = "resize";
+      corner = t.dataset.corner;
+    } else if (t === cropEl || t.parentNode === cropEl) {
+      mode = "move";
+    } else {
+      return;
+    }
+    startMX = e.clientX;
+    startMY = e.clientY;
+    startCX = cropX;
+    startCY = cropY;
+    startCS = cropSize;
+  }
+
+  function onPointerMove(e) {
+    if (!mode) return;
+    e.preventDefault();
+    const dx = e.clientX - startMX;
+    const dy = e.clientY - startMY;
+
+    if (mode === "move") {
+      cropX = Math.max(0, Math.min(startCX + dx, dispW - cropSize));
+      cropY = Math.max(0, Math.min(startCY + dy, dispH - cropSize));
+    } else {
+      resizeFromCorner(corner, dx, dy);
+    }
+    updateCrop();
+  }
+
+  function onPointerUp() {
+    mode = null;
+    corner = null;
+  }
+
+  function resizeFromCorner(c, dx, dy) {
+    // Anchor is the opposite corner
+    let aX, aY;
+    if (c === 'se') { aX = startCX; aY = startCY; }
+    else if (c === 'sw') { aX = startCX + startCS; aY = startCY; }
+    else if (c === 'ne') { aX = startCX; aY = startCY + startCS; }
+    else { aX = startCX + startCS; aY = startCY + startCS; }
+
+    // Where the dragged corner ends up
+    let cX, cY;
+    if (c === 'se') { cX = startCX + startCS + dx; cY = startCY + startCS + dy; }
+    else if (c === 'sw') { cX = startCX + dx; cY = startCY + startCS + dy; }
+    else if (c === 'ne') { cX = startCX + startCS + dx; cY = startCY + dy; }
+    else { cX = startCX + dx; cY = startCY + dy; }
+
+    let ns = Math.max(Math.abs(cX - aX), Math.abs(cY - aY));
+    ns = Math.max(ns, minCrop);
+
+    // Constrain to image bounds from the anchor side
+    if (c === 'se')      { ns = Math.min(ns, dispW - aX, dispH - aY); cropX = aX; cropY = aY; }
+    else if (c === 'sw') { ns = Math.min(ns, aX, dispH - aY);         cropX = aX - ns; cropY = aY; }
+    else if (c === 'ne') { ns = Math.min(ns, dispW - aX, aY);         cropX = aX; cropY = aY - ns; }
+    else                 { ns = Math.min(ns, aX, aY);                  cropX = aX - ns; cropY = aY - ns; }
+
+    cropSize = ns;
+  }
+
+  cropEl.addEventListener("mousedown", onPointerDown);
+  document.addEventListener("mousemove", onPointerMove);
+  document.addEventListener("mouseup", onPointerUp);
+
+  function cleanupListeners() {
+    document.removeEventListener("mousemove", onPointerMove);
+    document.removeEventListener("mouseup", onPointerUp);
+  }
+
+  // --- Modal actions ---
+  const actions = document.createElement("div");
+  actions.className = "modal-actions";
+
+  const resetBtn = document.createElement("button");
+  resetBtn.className = "btn-cancel";
+  resetBtn.textContent = "Reset to Auto";
+  resetBtn.addEventListener("click", async () => {
+    try {
+      const result = await apiDelete(
+        `/api/categories/${encodeURIComponent(categoryName)}/images/${encodeURIComponent(filename)}/thumbnail`
+      );
+      const cell = document.querySelector(`.cell[data-filename="${filename}"] .tile img`);
+      if (cell) cell.src = result.thumbnail_url + "?t=" + Date.now();
+      showToast("Thumbnail reset");
+      cleanupListeners(); closeModal();
+    } catch (err) { showToast(err.message || "Reset failed", "error"); }
+  });
+  actions.appendChild(resetBtn);
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.className = "btn-cancel";
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.addEventListener("click", () => { cleanupListeners(); closeModal(); });
+  actions.appendChild(cancelBtn);
+
+  const saveBtn = document.createElement("button");
+  saveBtn.className = "btn-primary";
+  saveBtn.textContent = "Save Crop";
+  saveBtn.addEventListener("click", async () => {
+    const origX = Math.round(cropX / scale);
+    const origY = Math.round(cropY / scale);
+    const origSize = Math.round(cropSize / scale);
+    try {
+      const result = await apiPut(
+        `/api/categories/${encodeURIComponent(categoryName)}/images/${encodeURIComponent(filename)}/thumbnail`,
+        { x: origX, y: origY, size: origSize }
+      );
+      const cell = document.querySelector(`.cell[data-filename="${filename}"] .tile img`);
+      if (cell) cell.src = result.thumbnail_url + "?t=" + Date.now();
+      showToast("Thumbnail updated");
+      cleanupListeners(); closeModal();
+    } catch (err) { showToast(err.message || "Save failed", "error"); }
+  });
+  actions.appendChild(saveBtn);
+
+  modal.appendChild(titleEl);
+  modal.appendChild(bodyEl);
+  modal.appendChild(actions);
+  overlay.innerHTML = "";
+  overlay.appendChild(modal);
+  overlay.classList.add("active");
+
+  function onKeydown(e) {
+    if (e.key === "Escape") { cleanupListeners(); closeModal(); }
+  }
+  document.addEventListener("keydown", onKeydown);
+  overlay._keydownHandler = onKeydown;
+}
 
 // Drag-and-drop file upload
 (function() {

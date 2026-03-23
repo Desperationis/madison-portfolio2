@@ -6,6 +6,7 @@ from logging.handlers import RotatingFileHandler
 
 from .utils import *
 from .http_gen import *
+from .manifest import migrate_to_manifest, read_manifest, MANIFEST_PATH
 
 FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
 
@@ -35,30 +36,36 @@ log = logging.getLogger("rich")
 
 cwd = Path.cwd()
 
+if "--migrate" in sys.argv:
+    art_dir = cwd / "art"
+    if not art_dir.is_dir():
+        log.error("art/ directory not found. Place art category folders inside art/.")
+        sys.exit(1)
+    migrate_to_manifest(art_dir)
+    sys.exit(0)
+
 if not (cwd / "config.yaml").is_file():
     log.error("config.yaml not found in current directory. Run from the project root.")
     sys.exit(1)
 
-detected_categories = []
-
-art_dir = cwd / "art"
-if not art_dir.is_dir():
-    log.error("art/ directory not found. Place art category folders inside art/.")
+if not MANIFEST_PATH.is_file():
+    log.error("portfolio.json not found. Run 'python -m portfolio --migrate' to create it from your art/ directory.")
     sys.exit(1)
 
-for first_layer in sorted([p for p in art_dir.iterdir() if p.is_dir()]):
-    if first_layer.name.startswith("."):
-        log.debug(f"Skipping hidden directory: {first_layer.name}")
+art_dir = cwd / "art"
+manifest = read_manifest()
+
+detected_categories = []
+for cat_entry in manifest["categories"]:
+    cat_dir = art_dir / cat_entry["name"]
+    if not cat_dir.is_dir():
+        log.warning(f"Skipping category '{cat_entry['name']}': directory not found at {cat_dir}")
         continue
 
-    thumbnails_dir = first_layer / "thumbnails"
-    second_layer = thumbnails_dir if thumbnails_dir.is_dir() else None
-
-    log.info(f"Added {first_layer.name} as a category.")
-    detected_categories.append(Category(first_layer.name, first_layer, second_layer))
-
-# Remove invalid folders
-detected_categories = [c for c in detected_categories if c.thumbnail_p]
+    cat = Category(cat_entry["name"], cat_dir, cat_entry["images"], cat_entry.get("preview"))
+    if cat.thumbnail_p:
+        log.info(f"Added {cat_entry['name']} as a category.")
+        detected_categories.append(cat)
 
 generated_p = cwd / "latest"
 generated_p.mkdir(parents=True, exist_ok=True)

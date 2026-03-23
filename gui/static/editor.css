@@ -88,13 +88,14 @@
   background: rgba(0, 0, 0, 0.45);
   display: flex;
   align-items: flex-start;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 6px;
   padding: 8px;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.15s ease;
   z-index: 10;
+  border-radius: 8px;
 }
 
 .card:hover .card-overlay {
@@ -103,7 +104,8 @@
 }
 
 .card-overlay .edit-btn,
-.card-overlay .delete-btn {
+.card-overlay .delete-btn,
+.card-overlay .drag-handle {
   position: static;
   opacity: 1;
   pointer-events: auto;
@@ -407,7 +409,15 @@
 
 /* === 12.7 Nav editing styles === */
 
+.nav-group {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .nav-edit-btn {
+  position: static;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -427,7 +437,8 @@
   vertical-align: middle;
 }
 
-.nav-item:hover .nav-edit-btn {
+.nav-group:hover .nav-edit-btn,
+.nav-group:hover .nav-delete-btn {
   opacity: 1;
   pointer-events: auto;
 }
@@ -437,11 +448,28 @@
 }
 
 .nav-delete-btn {
+  position: static;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 20px;
   height: 20px;
+  border-radius: 50%;
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  cursor: pointer;
   font-size: 12px;
+  line-height: 1;
   margin-left: 2px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, background 0.15s ease;
   vertical-align: middle;
+}
+
+.nav-delete-btn:hover {
+  background: #dc2626;
 }
 
 .add-nav-btn {
@@ -482,7 +510,20 @@
   border-bottom: 2px solid var(--accent, #5aa7ff);
   outline: none;
   padding: 2px 4px;
-  width: 100px;
+  width: 160px;
+}
+
+.nav-edit-form select {
+  font: inherit;
+  font-size: 0.9em;
+  background: transparent;
+  color: inherit;
+  border: none;
+  border-bottom: 2px solid var(--accent, #5aa7ff);
+  outline: none;
+  padding: 2px 4px;
+  width: 160px;
+  cursor: pointer;
 }
 
 .nav-edit-form .btn-save,

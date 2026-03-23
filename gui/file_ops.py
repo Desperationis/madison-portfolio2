@@ -1,15 +1,14 @@
 """Filesystem operations for categories and images."""
 
 import logging
-import re
 import shutil
-import threading
 import urllib.parse
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 from gui.thumbnail import delete_thumbnail, generate_thumbnail
+from portfolio.manifest import read_manifest, write_manifest
 from portfolio.utils import Category
 
 ART_DIR = Path(__file__).resolve().parent.parent / "art"
@@ -60,6 +59,11 @@ def create_category(name: str) -> dict:
         raise OSError(
             f"OS error while creating category '{name}' at {cat_dir}: {exc}"
         ) from exc
+    # Add to manifest
+    manifest = read_manifest()
+    manifest["categories"].append({"name": name, "preview": None, "images": []})
+    write_manifest(manifest)
+
     logger.info("Created category '%s'", name)
     return {
         "name": name,
@@ -94,21 +98,33 @@ def rename_category(old_name: str, new_name: str) -> dict:
         raise OSError(
             f"OS error while renaming category '{old_name}' to '{new_name}' at {old_dir}: {exc}"
         ) from exc
+    # Update manifest
+    manifest = read_manifest()
+    cat_images = []
+    for cat in manifest["categories"]:
+        if cat["name"] == old_name:
+            cat["name"] = new_name
+            cat_images = cat["images"]
+            break
+    write_manifest(manifest)
+
     logger.info("Renamed category '%s' to '%s'", old_name, new_name)
 
     # Build return dict
-    images = [
-        f for f in new_dir.iterdir()
-        if f.is_file() and f.suffix.lower() in IMAGE_EXTS
-    ]
+    thumbnails_dir = new_dir / "thumbnails"
+    has_thumbnails = thumbnails_dir.is_dir()
     thumbnail_url = None
-    if images:
-        first = sorted(images, key=lambda p: p.name)[0]
-        thumbnail_url = f"/art/{new_name}/{first.name}"
+    if cat_images:
+        first = cat_images[0]
+        thumb_path = thumbnails_dir / first
+        if has_thumbnails and thumb_path.is_file():
+            thumbnail_url = f"/art/{new_name}/thumbnails/{first}"
+        else:
+            thumbnail_url = f"/art/{new_name}/{first}"
     return {
         "name": new_name,
-        "image_count": len(images),
-        "has_thumbnails": (new_dir / "thumbnails").is_dir(),
+        "image_count": len(cat_images),
+        "has_thumbnails": has_thumbnails,
         "thumbnail_url": thumbnail_url,
     }
 
@@ -136,128 +152,99 @@ def delete_category(name: str, confirm: bool = False) -> None:
         raise OSError(
             f"OS error while deleting category '{name}' at {cat_dir}: {exc}"
         ) from exc
+    # Remove from manifest
+    manifest = read_manifest()
+    manifest["categories"] = [c for c in manifest["categories"] if c["name"] != name]
+    write_manifest(manifest)
+
     logger.info("Deleted category '%s'", name)
 
 
 def list_categories() -> list[dict]:
-    """Scan ART_DIR for subdirectories and return category metadata.
+    """Read categories from the manifest and return category metadata.
 
-    Returns a sorted list of dicts with keys:
+    Returns an ordered list of dicts with keys:
         name, image_count, has_thumbnails, thumbnail_url
+    Order comes from the manifest's categories array.
     """
+    manifest = read_manifest()
     categories = []
-    try:
-        entries = list(ART_DIR.iterdir())
-    except PermissionError as exc:
-        raise PermissionError(
-            f"Permission denied while listing categories at {ART_DIR}"
-        ) from exc
-    except OSError as exc:
-        raise OSError(
-            f"OS error while listing categories at {ART_DIR}: {exc}"
-        ) from exc
-    for entry in entries:
-        if not entry.is_dir() or entry.name.startswith("."):
-            continue
-
-        # Count image files (top-level only, not thumbnails/)
-        try:
-            images = [
-                f for f in entry.iterdir()
-                if f.is_file() and f.suffix.lower() in IMAGE_EXTS
-            ]
-        except PermissionError as exc:
-            raise PermissionError(
-                f"Permission denied while reading category '{entry.name}' at {entry}"
-            ) from exc
-        except OSError as exc:
-            raise OSError(
-                f"OS error while reading category '{entry.name}' at {entry}: {exc}"
-            ) from exc
-        image_count = len(images)
-
-        thumbnails_dir = entry / "thumbnails"
+    for cat in manifest["categories"]:
+        name = cat["name"]
+        images = cat["images"]
+        cat_dir = ART_DIR / name
+        thumbnails_dir = cat_dir / "thumbnails"
         has_thumbnails = thumbnails_dir.is_dir()
 
-        # First image as thumbnail URL (sorted for determinism)
+        # Determine thumbnail URL from preview field or first image
         thumbnail_url = None
-        if images:
-            first = sorted(images, key=lambda p: p.name)[0]
-            thumbnail_url = f"/art/{entry.name}/{first.name}"
+        preview = cat.get("preview")
+        if preview:
+            thumb_path = thumbnails_dir / preview
+            if has_thumbnails and thumb_path.is_file():
+                thumbnail_url = f"/art/{name}/thumbnails/{preview}"
+            else:
+                thumbnail_url = f"/art/{name}/{preview}"
+        elif images:
+            first = images[0]
+            thumb_path = thumbnails_dir / first
+            if has_thumbnails and thumb_path.is_file():
+                thumbnail_url = f"/art/{name}/thumbnails/{first}"
+            else:
+                thumbnail_url = f"/art/{name}/{first}"
 
         categories.append({
-            "name": entry.name,
-            "image_count": image_count,
+            "name": name,
+            "image_count": len(images),
             "has_thumbnails": has_thumbnails,
             "thumbnail_url": thumbnail_url,
         })
 
-    categories.sort(key=lambda c: c["name"])
     return categories
 
 
-def _extract_sort_key(stem: str) -> int | None:
-    """Extract numeric suffix from filename stem for sorting.
-
-    Mirrors ArtPiece._extract_sort_key() logic.
-    """
-    match = re.search(r'[\s_](\d+)$', stem)
-    if match:
-        return int(match.group(1))
-    return None
-
-
 def list_images(category_name: str) -> list[dict]:
-    """List images in a category with metadata.
+    """List images in a category from the manifest with metadata from disk.
 
-    Returns a sorted list of dicts with keys:
-        filename, sort_key, has_thumbnail, thumbnail_filename,
+    Returns an ordered list of dicts with keys:
+        filename, has_thumbnail, thumbnail_filename,
         full_url, thumbnail_url, size_bytes
+    Order comes from the manifest's images array.
     """
     cat_dir = ART_DIR / category_name
     if not cat_dir.is_dir():
         raise FileNotFoundError(f"Category '{category_name}' does not exist")
+
+    manifest = read_manifest()
+    cat_entry = None
+    for cat in manifest["categories"]:
+        if cat["name"] == category_name:
+            cat_entry = cat
+            break
+    if cat_entry is None:
+        raise FileNotFoundError(f"Category '{category_name}' not found in manifest")
 
     thumbnails_dir = cat_dir / "thumbnails"
 
     # Build case-insensitive lookup of thumbnail filenames
     thumb_lookup: dict[str, str] = {}
     if thumbnails_dir.is_dir():
-        try:
-            for t in thumbnails_dir.iterdir():
-                if t.is_file() and t.suffix.lower() in IMAGE_EXTS:
-                    thumb_lookup[t.name.lower()] = t.name
-        except PermissionError as exc:
-            raise PermissionError(
-                f"Permission denied while reading thumbnails for category '{category_name}' at {thumbnails_dir}"
-            ) from exc
-        except OSError as exc:
-            raise OSError(
-                f"OS error while reading thumbnails for category '{category_name}' at {thumbnails_dir}: {exc}"
-            ) from exc
+        for t in thumbnails_dir.iterdir():
+            if t.is_file() and t.suffix.lower() in IMAGE_EXTS:
+                thumb_lookup[t.name.lower()] = t.name
 
     encoded_cat = urllib.parse.quote(category_name, safe='')
 
     images = []
-    try:
-        dir_contents = list(cat_dir.iterdir())
-    except PermissionError as exc:
-        raise PermissionError(
-            f"Permission denied while listing images in category '{category_name}' at {cat_dir}"
-        ) from exc
-    except OSError as exc:
-        raise OSError(
-            f"OS error while listing images in category '{category_name}' at {cat_dir}: {exc}"
-        ) from exc
-    for f in dir_contents:
-        if not f.is_file() or f.suffix.lower() not in IMAGE_EXTS:
-            continue
+    for filename in cat_entry["images"]:
+        f = cat_dir / filename
+        if not f.is_file():
+            continue  # Skip files listed in manifest but missing from disk
 
-        sort_key = _extract_sort_key(f.stem)
-        thumb_name = thumb_lookup.get(f.name.lower())
+        thumb_name = thumb_lookup.get(filename.lower())
         has_thumbnail = thumb_name is not None
 
-        encoded_filename = urllib.parse.quote(f.name, safe='')
+        encoded_filename = urllib.parse.quote(filename, safe='')
         full_url = f"/art/{encoded_cat}/{encoded_filename}"
 
         if has_thumbnail:
@@ -266,20 +253,10 @@ def list_images(category_name: str) -> list[dict]:
         else:
             thumbnail_url = full_url
 
-        try:
-            size_bytes = f.stat().st_size
-        except PermissionError as exc:
-            raise PermissionError(
-                f"Permission denied while reading image '{f.name}' in category '{category_name}'"
-            ) from exc
-        except OSError as exc:
-            raise OSError(
-                f"OS error while reading image '{f.name}' in category '{category_name}': {exc}"
-            ) from exc
+        size_bytes = f.stat().st_size
 
         images.append({
-            "filename": f.name,
-            "sort_key": sort_key,
+            "filename": filename,
             "has_thumbnail": has_thumbnail,
             "thumbnail_filename": thumb_name,
             "full_url": full_url,
@@ -287,7 +264,6 @@ def list_images(category_name: str) -> list[dict]:
             "size_bytes": size_bytes,
         })
 
-    images.sort(key=lambda img: (img["sort_key"] is None, img["sort_key"] or 0))
     return images
 
 
@@ -338,15 +314,21 @@ def add_image(category_name: str, file_storage) -> dict:
     thumb_dir = cat_dir / "thumbnails"
     generate_thumbnail(save_path, thumb_dir)
 
+    # Update manifest
+    manifest = read_manifest()
+    for cat in manifest["categories"]:
+        if cat["name"] == category_name:
+            cat["images"].append(final_filename)
+            break
+    write_manifest(manifest)
+
     # Build return dict
     encoded_cat = urllib.parse.quote(category_name, safe='')
     encoded_filename = urllib.parse.quote(final_filename, safe='')
-    sort_key = _extract_sort_key(save_path.stem)
     thumb_path = thumb_dir / final_filename
 
     return {
         "filename": final_filename,
-        "sort_key": sort_key,
         "has_thumbnail": thumb_path.exists(),
         "thumbnail_filename": final_filename if thumb_path.exists() else None,
         "full_url": f"/art/{encoded_cat}/{encoded_filename}",
@@ -380,31 +362,170 @@ def delete_image(category_name: str, filename: str) -> None:
     logger.info("Deleted image '%s' from category '%s'", filename, category_name)
     delete_thumbnail(ART_DIR / category_name, filename)
 
+    # Update manifest
+    manifest = read_manifest()
+    for cat in manifest["categories"]:
+        if cat["name"] == category_name:
+            if filename in cat["images"]:
+                cat["images"].remove(filename)
+            break
+    write_manifest(manifest)
 
-_reorder_lock = threading.Lock()
+
+def crop_thumbnail(category_name: str, filename: str, x: int, y: int, size: int) -> dict:
+    """Crop the original image at the given region and save as the thumbnail.
+
+    x, y, size are pixel coordinates on the original image defining a square
+    crop region. The crop is resized to 800x800 and saved as the thumbnail.
+    """
+    from PIL import Image as _Image, ImageOps as _ImageOps
+
+    cat_dir = ART_DIR / category_name
+    if not cat_dir.is_dir():
+        raise FileNotFoundError(f"Category '{category_name}' does not exist")
+
+    image_path = cat_dir / filename
+    if not image_path.is_file():
+        raise FileNotFoundError(
+            f"Image '{filename}' does not exist in category '{category_name}'"
+        )
+
+    thumb_dir = cat_dir / "thumbnails"
+    thumb_dir.mkdir(parents=True, exist_ok=True)
+
+    img = _Image.open(image_path)
+    img = _ImageOps.exif_transpose(img)
+
+    if img.mode in ("RGBA", "P"):
+        background = _Image.new("RGB", img.size, (255, 255, 255))
+        if img.mode == "P":
+            img = img.convert("RGBA")
+        background.paste(img, mask=img.split()[3])
+        img = background
+
+    # Clamp crop to image bounds
+    w, h = img.size
+    x = max(0, min(x, w - 1))
+    y = max(0, min(y, h - 1))
+    size = max(1, min(size, w - x, h - y))
+
+    cropped = img.crop((x, y, x + size, y + size))
+    cropped = cropped.resize((800, 800), _Image.LANCZOS)
+
+    if cropped.mode != "RGB":
+        cropped = cropped.convert("RGB")
+    cropped.save(thumb_dir / filename, "JPEG", quality=85)
+
+    logger.info("Cropped thumbnail for '%s' in category '%s' at (%d,%d) size %d", filename, category_name, x, y, size)
+
+    encoded_cat = urllib.parse.quote(category_name, safe='')
+    encoded_filename = urllib.parse.quote(filename, safe='')
+    return {
+        "filename": filename,
+        "thumbnail_url": f"/art/{encoded_cat}/thumbnails/{encoded_filename}",
+    }
+
+
+def reset_thumbnail(category_name: str, filename: str) -> dict:
+    """Regenerate the auto-thumbnail from the original image.
+
+    Returns an updated image dict.
+    """
+    cat_dir = ART_DIR / category_name
+    if not cat_dir.is_dir():
+        raise FileNotFoundError(f"Category '{category_name}' does not exist")
+
+    image_path = cat_dir / filename
+    if not image_path.is_file():
+        raise FileNotFoundError(
+            f"Image '{filename}' does not exist in category '{category_name}'"
+        )
+
+    thumb_dir = cat_dir / "thumbnails"
+    generate_thumbnail(image_path, thumb_dir)
+    logger.info("Reset thumbnail for '%s' in category '%s'", filename, category_name)
+
+    encoded_cat = urllib.parse.quote(category_name, safe='')
+    encoded_filename = urllib.parse.quote(filename, safe='')
+    thumb_path = thumb_dir / filename
+    return {
+        "filename": filename,
+        "thumbnail_url": f"/art/{encoded_cat}/thumbnails/{encoded_filename}" if thumb_path.exists() else f"/art/{encoded_cat}/{encoded_filename}",
+    }
+
+
+def set_category_preview(category_name: str, filename: str | None) -> dict:
+    """Set the preview image for a category in the manifest.
+
+    If filename is None, resets to default (first image).
+    If filename is a string, validates it exists in the category's images list.
+    Returns updated category metadata dict.
+    """
+    manifest = read_manifest()
+    cat_entry = None
+    for cat in manifest["categories"]:
+        if cat["name"] == category_name:
+            cat_entry = cat
+            break
+    if cat_entry is None:
+        raise FileNotFoundError(f"Category '{category_name}' not found in manifest")
+
+    if filename is not None and filename not in cat_entry["images"]:
+        raise ValueError(f"Image '{filename}' is not in category '{category_name}'")
+
+    cat_entry["preview"] = filename
+    write_manifest(manifest)
+
+    logger.info("Set preview for category '%s' to %s", category_name, filename)
+
+    # Build return dict
+    cat_dir = ART_DIR / category_name
+    thumbnails_dir = cat_dir / "thumbnails"
+    has_thumbnails = thumbnails_dir.is_dir()
+
+    preview = filename or (cat_entry["images"][0] if cat_entry["images"] else None)
+    thumbnail_url = None
+    if preview:
+        thumb_path = thumbnails_dir / preview
+        encoded_cat = urllib.parse.quote(category_name, safe='')
+        encoded_preview = urllib.parse.quote(preview, safe='')
+        if has_thumbnails and thumb_path.is_file():
+            thumbnail_url = f"/art/{encoded_cat}/thumbnails/{encoded_preview}"
+        else:
+            thumbnail_url = f"/art/{encoded_cat}/{encoded_preview}"
+
+    return {
+        "name": category_name,
+        "preview": filename,
+        "thumbnail_url": thumbnail_url,
+    }
 
 
 def reorder_images(category_name: str, ordered_filenames: list[str]) -> dict:
-    """Reorder images in a category using a two-phase atomic rename.
+    """Reorder images in a category by updating the manifest array.
 
     Validates that ordered_filenames contains exactly the same filenames as
-    currently exist in the category. Computes new filenames with sequential
-    numeric suffixes, renames via temporary names to avoid collisions, and
-    renames corresponding thumbnails in sync.
+    the category's current images in the manifest. No files are renamed on
+    disk — only the JSON array order changes.
 
-    Returns a mapping dict: {old_filename: new_filename}.
-    Raises ValueError if ordered_filenames doesn't match existing files.
+    Returns an identity mapping dict {filename: filename} for API compat.
+    Raises ValueError if ordered_filenames doesn't match existing images.
     Raises FileNotFoundError if the category doesn't exist.
     """
     cat_dir = ART_DIR / category_name
     if not cat_dir.is_dir():
         raise FileNotFoundError(f"Category '{category_name}' does not exist")
 
-    # Get current image filenames
-    existing = {
-        f.name for f in cat_dir.iterdir()
-        if f.is_file() and f.suffix.lower() in IMAGE_EXTS
-    }
+    manifest = read_manifest()
+    cat_entry = None
+    for cat in manifest["categories"]:
+        if cat["name"] == category_name:
+            cat_entry = cat
+            break
+    if cat_entry is None:
+        raise FileNotFoundError(f"Category '{category_name}' not found in manifest")
+
+    existing = set(cat_entry["images"])
     provided = set(ordered_filenames)
 
     if existing != provided:
@@ -417,68 +538,37 @@ def reorder_images(category_name: str, ordered_filenames: list[str]) -> dict:
             parts.append(f"extra: {sorted(extra)}")
         raise ValueError(f"Filename mismatch — {', '.join(parts)}")
 
-    # Compute new filenames: strip existing numeric suffix, append _{position}
-    suffix_re = re.compile(r'[\s_]\d+$')
-    rename_map = {}
-    for i, old_name in enumerate(ordered_filenames, start=1):
-        old_path = Path(old_name)
-        stem = old_path.stem
-        ext = old_path.suffix
-        clean_stem = suffix_re.sub('', stem)
-        new_name = f"{clean_stem}_{i}{ext}"
-        rename_map[old_name] = new_name
+    cat_entry["images"] = list(ordered_filenames)
+    write_manifest(manifest)
 
-    thumb_dir = cat_dir / "thumbnails"
-    has_thumbs = thumb_dir.is_dir()
+    logger.info("Reordered %d images in category '%s'", len(ordered_filenames), category_name)
 
-    # Build case-insensitive thumbnail lookup
-    thumb_lookup: dict[str, str] = {}
-    if has_thumbs:
-        for t in thumb_dir.iterdir():
-            if t.is_file():
-                thumb_lookup[t.name.lower()] = t.name
+    return {f: f for f in ordered_filenames}
 
-    try:
-        with _reorder_lock:
-            # Phase 1: rename all files to temporary names
-            temp_names = {}
-            for i, old_name in enumerate(ordered_filenames):
-                ext = Path(old_name).suffix
-                tmp_name = f"__reorder_tmp_{i}{ext}"
-                (cat_dir / old_name).rename(cat_dir / tmp_name)
-                temp_names[i] = tmp_name
 
-                # Also rename thumbnail if it exists
-                actual_thumb = thumb_lookup.get(old_name.lower())
-                if has_thumbs and actual_thumb:
-                    thumb_ext = Path(actual_thumb).suffix
-                    thumb_tmp = f"__reorder_tmp_{i}{thumb_ext}"
-                    (thumb_dir / actual_thumb).rename(thumb_dir / thumb_tmp)
+def reorder_categories(ordered_names: list[str]) -> list[str]:
+    """Reorder categories by updating the manifest array order.
 
-            # Phase 2: rename temp files to final new names
-            for i, old_name in enumerate(ordered_filenames):
-                new_name = rename_map[old_name]
-                ext = Path(old_name).suffix
-                tmp_name = f"__reorder_tmp_{i}{ext}"
-                (cat_dir / tmp_name).rename(cat_dir / new_name)
+    Validates that ordered_names contains exactly the same category names
+    as currently exist in the manifest. Returns the saved order.
+    """
+    manifest = read_manifest()
+    cat_by_name = {cat["name"]: cat for cat in manifest["categories"]}
+    existing = set(cat_by_name)
+    provided = set(ordered_names)
 
-                # Also rename thumbnail
-                actual_thumb = thumb_lookup.get(old_name.lower())
-                if has_thumbs and actual_thumb:
-                    thumb_ext = Path(actual_thumb).suffix
-                    thumb_tmp = f"__reorder_tmp_{i}{thumb_ext}"
-                    new_thumb = f"{Path(new_name).stem}{thumb_ext}"
-                    (thumb_dir / thumb_tmp).rename(thumb_dir / new_thumb)
-    except PermissionError as exc:
-        logger.error("Permission denied reordering images in category '%s'", category_name)
-        raise PermissionError(
-            f"Permission denied while reordering images in category '{category_name}' at {cat_dir}"
-        ) from exc
-    except OSError as exc:
-        logger.error("OS error reordering images in category '%s': %s", category_name, exc)
-        raise OSError(
-            f"OS error while reordering images in category '{category_name}' at {cat_dir}: {exc}"
-        ) from exc
-    logger.info("Reordered %d images in category '%s'", len(rename_map), category_name)
+    if existing != provided:
+        missing = existing - provided
+        extra = provided - existing
+        parts = []
+        if missing:
+            parts.append(f"missing: {sorted(missing)}")
+        if extra:
+            parts.append(f"extra: {sorted(extra)}")
+        raise ValueError(f"Category name mismatch — {', '.join(parts)}")
 
-    return rename_map
+    manifest["categories"] = [cat_by_name[name] for name in ordered_names]
+    write_manifest(manifest)
+
+    logger.info("Reordered %d categories", len(ordered_names))
+    return ordered_names

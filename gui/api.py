@@ -211,6 +211,32 @@ def rename_category(name):
     return jsonify(category)
 
 
+@api.route("/categories/reorder", methods=["PUT"])
+def reorder_categories():
+    """Reorder categories on the front page."""
+    data = request.get_json(silent=True)
+    if not data or "order" not in data:
+        return jsonify({"error": "Missing 'order' in request body"}), 400
+    order = data["order"]
+    if not isinstance(order, list):
+        return jsonify({"error": "'order' must be a list of category names"}), 400
+    result = file_ops.reorder_categories(order)
+    return jsonify(result)
+
+
+@api.route("/categories/<name>/preview", methods=["PUT"])
+def set_category_preview(name):
+    """Set the preview image for a category."""
+    data = request.get_json(silent=True)
+    if not data or "filename" not in data:
+        return jsonify({"error": "Missing 'filename' in request body"}), 400
+    filename = data["filename"]
+    if filename is not None and not isinstance(filename, str):
+        return jsonify({"error": "'filename' must be a string or null"}), 400
+    result = file_ops.set_category_preview(name, filename)
+    return jsonify(result)
+
+
 @api.route("/categories/<name>", methods=["DELETE"])
 def delete_category(name):
     """Delete a category."""
@@ -305,6 +331,54 @@ def delete_image(name, filename):
     """Delete an image and its thumbnail from a category."""
     file_ops.delete_image(name, filename)
     return jsonify({"deleted": filename})
+
+
+@api.route("/categories/<name>/images/<filename>/thumbnail", methods=["PUT"])
+def crop_thumbnail(name, filename):
+    """Crop the original image at the given region and save as thumbnail."""
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"error": "Missing JSON body"}), 400
+    try:
+        x = int(data["x"])
+        y = int(data["y"])
+        size = int(data["size"])
+    except (KeyError, TypeError, ValueError):
+        return jsonify({"error": "Must provide integer 'x', 'y', and 'size'"}), 400
+    if size < 1:
+        return jsonify({"error": "'size' must be at least 1"}), 400
+    result = file_ops.crop_thumbnail(name, filename, x, y, size)
+    return jsonify(result)
+
+
+@api.route("/categories/<name>/images/<filename>/thumbnail", methods=["DELETE"])
+def reset_thumbnail(name, filename):
+    """Reset an image's thumbnail to auto-generated."""
+    result = file_ops.reset_thumbnail(name, filename)
+    return jsonify(result)
+
+
+# --- File listing endpoint ---
+
+
+@api.route("/files", methods=["GET"])
+def list_files():
+    """Return a list of files in the repo suitable for navigation links."""
+    import os
+    from pathlib import Path
+
+    root = Path(os.getcwd())
+    skip_dirs = {".git", "__pycache__", "node_modules", ".pytest_cache", "gui", "tests", "portfolio"}
+    results = []
+    for p in sorted(root.rglob("*")):
+        if p.is_dir():
+            continue
+        rel = p.relative_to(root)
+        parts = rel.parts
+        if any(part in skip_dirs or part.startswith(".") for part in parts):
+            continue
+        results.append(str(rel))
+    return jsonify(results)
 
 
 # --- Deploy endpoints ---
