@@ -45,7 +45,14 @@
     /* Six-up responsive gallery */
     .card{grid-column:span 4; display:flex; flex-direction:column; align-items:center; text-align:center;}
     @media (max-width: 980px){.card{grid-column:span 6}}
-    @media (max-width: 640px){.card{grid-column:span 12}}
+    @media (max-width: 640px){
+      .card{grid-column:span 6}
+      :root{--grid-gap:16px}
+      .wrap{margin:20px auto;padding:0 16px 40px}
+      .nav{padding:14px 16px}
+      .label{font-size:11px;letter-spacing:.3em;margin-top:8px}
+      footer{margin:24px auto 36px;padding:0 16px}
+    }
 
     .thumb{
       aspect-ratio: 1 / 1; /* perfect square */

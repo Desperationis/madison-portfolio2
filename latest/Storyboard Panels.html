@@ -36,7 +36,19 @@
     .grid{display:grid;gap:var(--gap);grid-template-columns:repeat(12,1fr)}
     .cell{grid-column:span 4}
     @media (max-width: 980px){.cell{grid-column:span 6}}
-    @media (max-width: 640px){.cell{grid-column:span 12}}
+    @media (max-width: 640px){
+      .cell{grid-column:span 6}
+      :root{--gap:12px}
+      .wrap{margin:8px auto 40px;padding:0 12px}
+      .hero{margin:16px auto 4px;padding:0 16px}
+      .hero h1{font-size:26px;margin:12px 0 4px}
+      .nav{padding:14px 16px}
+      footer{margin:16px auto 36px;padding:0 16px}
+      /* Hide prev/next buttons on mobile — swipe handles navigation */
+      .lightbox__prev,.lightbox__next{display:none}
+      .lightbox__close{width:48px;height:48px;top:12px;right:12px}
+      .lightbox__img{max-height:80vh;border-radius:4px}
+    }
 
     .tile{position:relative;display:block;width:100%;aspect-ratio:1/1;border-radius:10px;overflow:hidden;background:#f3f4f6;box-shadow:0 10px 25px rgba(0,0,0,.06);cursor:pointer;border:none}
     .tile img{width:100%;height:100%;display:block;object-fit:cover;transition:transform .45s ease, filter .45s ease}
@@ -120,6 +132,17 @@
     document.getElementById('closeBtn').addEventListener('click', close);
     lightbox.addEventListener('click', (e)=>{ if(e.target===lightbox) close(); });
     window.addEventListener('keydown', (e)=>{if(!lightbox.classList.contains('open')) return;if(e.key==='Escape') close();if(e.key==='ArrowRight') next();if(e.key==='ArrowLeft') prev();});
+
+    /* Touch swipe support for lightbox */
+    let touchX0=null;
+    lightbox.addEventListener('touchstart',(e)=>{touchX0=e.changedTouches[0].clientX;},{passive:true});
+    lightbox.addEventListener('touchend',(e)=>{
+      if(touchX0===null) return;
+      const dx=e.changedTouches[0].clientX-touchX0;
+      touchX0=null;
+      if(Math.abs(dx)<50) return;
+      if(dx<0) next(); else prev();
+    });
   </script>
 </body>
 </html>

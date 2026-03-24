@@ -204,6 +204,17 @@ class CategoryPage:
     document.getElementById('closeBtn').addEventListener('click', close);
     lightbox.addEventListener('click', (e)=>{{ if(e.target===lightbox) close(); }});
     window.addEventListener('keydown', (e)=>{{if(!lightbox.classList.contains('open')) return;if(e.key==='Escape') close();if(e.key==='ArrowRight') next();if(e.key==='ArrowLeft') prev();}});
+
+    /* Touch swipe support for lightbox */
+    let touchX0=null;
+    lightbox.addEventListener('touchstart',(e)=>{{touchX0=e.changedTouches[0].clientX;}},{{passive:true}});
+    lightbox.addEventListener('touchend',(e)=>{{
+      if(touchX0===null) return;
+      const dx=e.changedTouches[0].clientX-touchX0;
+      touchX0=null;
+      if(Math.abs(dx)<50) return;
+      if(dx<0) next(); else prev();
+    }});
   </script>
 </body>
 </html>
