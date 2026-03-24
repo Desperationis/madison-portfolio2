@@ -33,12 +33,16 @@ do_nuclear_reset() {
   }
 
   BRANCH=$(git rev-parse --abbrev-ref HEAD)
-  git reset --hard "origin/$BRANCH"
+  git reset --hard "origin/$BRANCH" || {
+    osascript -e 'display dialog "Reset failed. Try again or contact support." buttons {"OK"} default button "OK" with icon stop with title "Madison Portfolio"'
+    return 1
+  }
   git clean -fd
 
   echo ""
   echo "Done! Everything matches the live website."
   echo ""
+  osascript -e 'display dialog "Everything has been reset to match the live website." buttons {"OK"} default button "OK" with icon note with title "Madison Portfolio"' 2>/dev/null
   return 0
 }
 
@@ -68,6 +72,12 @@ if git fetch origin 2>/dev/null; then
         display dialog theMsg buttons {"Cancel", "Nuke Everything", "Pull"} default button "Pull" with icon note with title "Madison Portfolio"
         button returned of result
       ' 2>/dev/null)
+    fi
+
+    # If osascript failed silently (permissions issue), CHOICE is empty — default to Pull
+    if [ -z "$CHOICE" ]; then
+      echo "Dialog failed (macOS permissions?). Defaulting to pull..."
+      CHOICE="Pull"
     fi
 
     case "$CHOICE" in
