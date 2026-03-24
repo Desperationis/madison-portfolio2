@@ -111,8 +111,8 @@ function showModal({ title, body, confirmText = "OK", cancelText = "Cancel", onC
   confirmBtn.className = isDanger ? "btn-danger" : "btn-primary";
   confirmBtn.textContent = confirmText;
   confirmBtn.addEventListener("click", () => {
-    closeModal();
     if (onConfirm) onConfirm();
+    closeModal();
   });
   actions.appendChild(confirmBtn);
 
@@ -128,8 +128,8 @@ function showModal({ title, body, confirmText = "OK", cancelText = "Cancel", onC
       closeModal();
     } else if (e.key === "Enter") {
       e.preventDefault();
-      closeModal();
       if (onConfirm) onConfirm();
+      closeModal();
     }
   }
   document.addEventListener("keydown", onKeydown);
