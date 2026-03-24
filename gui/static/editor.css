@@ -332,6 +332,21 @@
   box-sizing: border-box;
 }
 
+.reset-btn {
+  background: #ef4444;
+  color: #fff;
+  font-weight: 600;
+  padding: 10px 24px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.reset-btn:hover {
+  background: #dc2626;
+}
+
 .deploy-btn {
   background: #22c55e;
   color: #fff;

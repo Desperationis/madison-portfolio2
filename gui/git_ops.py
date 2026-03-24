@@ -70,6 +70,129 @@ def sync_to_origin() -> None:
     logger.info("Synced to origin/%s", branch)
 
 
+def nuclear_reset() -> dict:
+    """Nuke all local state and make the repo exactly match the remote.
+
+    Handles every failure mode: in-progress merge/rebase/cherry-pick,
+    detached HEAD, dirty working tree, untracked files — everything.
+
+    Returns a dict with keys:
+        success (bool): True if the reset completed.
+        steps (list[dict]): One dict per step with name, success, output, error, skipped.
+        error (str | None): Top-level error message, or None on success.
+    """
+    step_names = [
+        "Clearing git locks",
+        "Aborting in-progress operations",
+        "Checking out main branch",
+        "Fetching from remote",
+        "Resetting to remote",
+        "Cleaning untracked files",
+    ]
+    steps: list[dict] = []
+
+    def _fail(step: dict, error_msg: str) -> dict:
+        logger.error("Nuclear reset failed at '%s': %s", step["name"], error_msg)
+        step["success"] = False
+        step["error"] = error_msg
+        completed_names = {s["name"] for s in steps}
+        for name in step_names:
+            if name not in completed_names:
+                steps.append(_make_step(name, skipped=True))
+        return {"success": False, "steps": steps, "error": error_msg}
+
+    if shutil.which("git") is None:
+        step = _make_step(step_names[0])
+        steps.append(step)
+        return _fail(step, "git is not installed or not on PATH")
+
+    # Step 1: Clear stale lock files that prevent git operations
+    step = _make_step("Clearing git locks")
+    steps.append(step)
+    git_dir = PROJECT_ROOT / ".git"
+    lock_file = git_dir / "index.lock"
+    try:
+        if lock_file.exists():
+            lock_file.unlink()
+            step["output"] = "Removed stale index.lock"
+        else:
+            step["output"] = "No lock files found"
+        step["success"] = True
+    except OSError as exc:
+        return _fail(step, f"Could not remove lock file: {exc}")
+
+    # Step 2: Abort any in-progress merge / rebase / cherry-pick
+    step = _make_step("Aborting in-progress operations")
+    steps.append(step)
+    aborted = []
+    if (git_dir / "MERGE_HEAD").exists():
+        proc = _run_git("merge", "--abort")
+        if proc.returncode == 0:
+            aborted.append("merge")
+    if (git_dir / "rebase-merge").exists() or (git_dir / "rebase-apply").exists():
+        proc = _run_git("rebase", "--abort")
+        if proc.returncode == 0:
+            aborted.append("rebase")
+    if (git_dir / "CHERRY_PICK_HEAD").exists():
+        proc = _run_git("cherry-pick", "--abort")
+        if proc.returncode == 0:
+            aborted.append("cherry-pick")
+    step["output"] = f"Aborted: {', '.join(aborted)}" if aborted else "Nothing to abort"
+    step["success"] = True
+
+    # Step 3: Make sure we're on a real branch (not detached HEAD)
+    step = _make_step("Checking out main branch")
+    steps.append(step)
+    proc = _run_git("symbolic-ref", "HEAD")
+    if proc.returncode != 0:
+        # Detached HEAD — check out main
+        proc = _run_git("checkout", "main")
+        if proc.returncode != 0:
+            # Try master as fallback
+            proc = _run_git("checkout", "master")
+            if proc.returncode != 0:
+                return _fail(step, "Could not check out main or master branch")
+        step["output"] = f"Checked out {proc.stdout.strip()}"
+    else:
+        branch = proc.stdout.strip().replace("refs/heads/", "")
+        step["output"] = f"Already on branch {branch}"
+    step["success"] = True
+
+    # Determine the current branch name for reset
+    proc = _run_git("rev-parse", "--abbrev-ref", "HEAD")
+    branch = proc.stdout.strip() if proc.returncode == 0 else "main"
+
+    # Step 4: Fetch latest from origin
+    step = _make_step("Fetching from remote")
+    steps.append(step)
+    proc = _run_git("fetch", "origin", timeout=30)
+    if proc.returncode != 0:
+        return _fail(step, f"Could not reach the remote: {proc.stderr}")
+    step["output"] = "Fetched latest from origin"
+    step["success"] = True
+
+    # Step 5: Hard reset to origin/<branch>
+    step = _make_step("Resetting to remote")
+    steps.append(step)
+    proc = _run_git("reset", "--hard", f"origin/{branch}")
+    if proc.returncode != 0:
+        return _fail(step, f"Reset failed: {proc.stderr}")
+    step["output"] = proc.stdout.strip()
+    step["success"] = True
+
+    # Step 6: Remove all untracked files and directories
+    step = _make_step("Cleaning untracked files")
+    steps.append(step)
+    proc = _run_git("clean", "-fd")
+    if proc.returncode != 0:
+        return _fail(step, f"Clean failed: {proc.stderr}")
+    step["output"] = proc.stdout.strip() or "Working tree clean"
+    step["success"] = True
+
+    logger.info("Nuclear reset completed — repo matches origin/%s", branch)
+    return {"success": True, "steps": steps, "error": None}
+
+
 def check_git_status() -> dict:
     """Return a dict describing the current git repository status."""
     result = {

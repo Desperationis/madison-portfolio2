@@ -5,11 +5,17 @@ import yaml
 from pathlib import Path
 
 _CSS_DIR = Path(__file__).parent / "css"
+_JS_DIR = Path(__file__).parent / "js"
 
 
 def _read_css(name: str) -> str:
     """Read a shared CSS file from portfolio/css/."""
     return (_CSS_DIR / name).read_text()
+
+
+def _read_js(name: str) -> str:
+    """Read a shared JS file from portfolio/js/."""
+    return (_JS_DIR / name).read_text()
 
 
 def _og_image_url(site_url, cwd, image_path):
@@ -236,6 +242,7 @@ class CategoryPage:
 
         self._gen_art_code()
 
+        mobile_viewer_js = _read_js("mobile_viewer.js")
         self.footer = f"""
 
   <footer>
@@ -271,17 +278,11 @@ class CategoryPage:
     document.getElementById('closeBtn').addEventListener('click', close);
     lightbox.addEventListener('click', (e)=>{{ if(e.target===lightbox) close(); }});
     window.addEventListener('keydown', (e)=>{{if(!lightbox.classList.contains('open')) return;if(e.key==='Escape') close();if(e.key==='ArrowRight') next();if(e.key==='ArrowLeft') prev();}});
+  </script>
 
-    /* Touch swipe support for lightbox */
-    let touchX0=null;
-    lightbox.addEventListener('touchstart',(e)=>{{touchX0=e.changedTouches[0].clientX;}},{{passive:true}});
-    lightbox.addEventListener('touchend',(e)=>{{
-      if(touchX0===null) return;
-      const dx=e.changedTouches[0].clientX-touchX0;
-      touchX0=null;
-      if(Math.abs(dx)<50) return;
-      if(dx<0) next(); else prev();
-    }});
+  <!-- Mobile: Procreate-style pinch/zoom/pan/swipe viewer -->
+  <script>
+{mobile_viewer_js}
   </script>
 </body>
 </html>

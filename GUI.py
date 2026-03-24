@@ -112,7 +112,7 @@ if __name__ == "__main__":
 
     if not shutil.which("git"):
         print("Warning: git is not available on PATH. Deploy functionality will not work.")
-    else:
+    elif not os.environ.get("PORTFOLIO_SKIP_SYNC"):
         print("Syncing to origin...")
         try:
             git_ops.sync_to_origin()

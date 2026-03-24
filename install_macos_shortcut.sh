@@ -22,7 +22,7 @@ osascript <<'APPLESCRIPT'
 tell application "Terminal"
     activate
     set targetDir to (POSIX path of (path to home folder)) & "Desktop/madison-portfolio2"
-    do script "cd " & quoted form of targetDir & " && python3 GUI.py"
+    do script "cd " & quoted form of targetDir & " && bash run_gui.sh"
 end tell
 APPLESCRIPT
 LAUNCHER

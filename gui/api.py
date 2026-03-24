@@ -394,6 +394,14 @@ def list_files():
 # --- Deploy endpoints ---
 
 
+@api.route("/reset", methods=["POST"])
+def reset_everything():
+    """Nuclear reset: abort all git operations, hard reset to remote, clean."""
+    result = git_ops.nuclear_reset()
+    status_code = 200 if result["success"] else 500
+    return jsonify(result), status_code
+
+
 @api.route("/deploy/preflight", methods=["GET"])
 def deploy_preflight():
     """Return preflight status for deploy."""

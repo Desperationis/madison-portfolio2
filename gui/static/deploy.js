@@ -1,3 +1,151 @@
+/* === Reset Everything Flow === */
+
+function showResetConfirmModal() {
+  showModal({
+    title: "Reset Everything",
+    body:
+      '<p style="margin:0 0 12px;line-height:1.5;">This will <strong>undo all your unsaved changes</strong> and make everything match what\'s currently on the live website.</p>' +
+      '<p style="margin:0;line-height:1.5;color:#6b7280;">Use this if something seems broken, stuck, or you just want a fresh start.</p>',
+    confirmText: "Reset Everything",
+    cancelText: "Never mind",
+    isDanger: true,
+    onConfirm: () => startNuclearReset(),
+  });
+}
+
+function startNuclearReset() {
+  const overlay = document.getElementById("modalOverlay");
+  const modal = document.createElement("div");
+  modal.className = "modal";
+
+  const titleEl = document.createElement("h2");
+  titleEl.className = "modal-title";
+  titleEl.textContent = "Resetting...";
+  modal.appendChild(titleEl);
+
+  const bannerEl = document.createElement("div");
+  bannerEl.style.cssText = "display:none;padding:10px 14px;border-radius:6px;margin-bottom:12px;font-weight:600;";
+  modal.appendChild(bannerEl);
+
+  const stepNames = [
+    "Clearing git locks",
+    "Aborting in-progress operations",
+    "Checking out main branch",
+    "Fetching from remote",
+    "Resetting to remote",
+    "Cleaning untracked files",
+  ];
+
+  const stepsEl = document.createElement("div");
+  stepsEl.className = "modal-body";
+  stepsEl.style.cssText = "padding:0;";
+
+  // Add spinner keyframes if not already present
+  if (!document.getElementById("deploySpinStyle")) {
+    const style = document.createElement("style");
+    style.id = "deploySpinStyle";
+    style.textContent = "@keyframes deploySpin { to { transform: rotate(360deg); } }";
+    document.head.appendChild(style);
+  }
+
+  const stepEls = stepNames.map(name => {
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #f3f4f6;";
+
+    const icon = document.createElement("span");
+    icon.style.cssText = "font-size:16px;line-height:1.4;flex-shrink:0;width:20px;text-align:center;";
+    icon.innerHTML = '<span class="deploy-spinner" style="display:inline-block;width:14px;height:14px;border:2px solid #d1d5db;border-top-color:#ef4444;border-radius:50%;animation:deploySpin 0.6s linear infinite;"></span>';
+
+    const content = document.createElement("div");
+    content.style.cssText = "flex:1;min-width:0;";
+
+    const label = document.createElement("div");
+    label.textContent = name;
+    content.appendChild(label);
+
+    const errorPre = document.createElement("pre");
+    errorPre.style.cssText = "display:none;margin:4px 0 0;padding:8px;background:#fef2f2;border:1px solid #fecaca;border-radius:4px;font-size:12px;max-height:200px;overflow:auto;white-space:pre-wrap;word-break:break-word;";
+    content.appendChild(errorPre);
+
+    row.appendChild(icon);
+    row.appendChild(content);
+    stepsEl.appendChild(row);
+    return { row, icon, label, errorPre };
+  });
+
+  modal.appendChild(stepsEl);
+
+  const actions = document.createElement("div");
+  actions.className = "modal-actions";
+  actions.style.display = "none";
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "btn-cancel";
+  closeBtn.textContent = "Close";
+  closeBtn.addEventListener("click", () => {
+    closeModal();
+    window.location.reload();
+  });
+  actions.appendChild(closeBtn);
+  modal.appendChild(actions);
+
+  overlay.innerHTML = "";
+  overlay.appendChild(modal);
+  overlay.classList.add("active");
+
+  fetch("/api/reset", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}",
+  })
+    .then(resp => resp.json())
+    .then(result => {
+      if (result.steps) {
+        result.steps.forEach((step, i) => {
+          if (i >= stepEls.length) return;
+          const el = stepEls[i];
+          if (step.success) {
+            el.icon.innerHTML = '<span style="color:#22c55e;">&#x2714;</span>';
+          } else if (step.skipped) {
+            el.icon.innerHTML = '<span style="color:#9ca3af;">&mdash;</span>';
+          } else {
+            el.icon.innerHTML = '<span style="color:#ef4444;">&#x2716;</span>';
+          }
+          if (step.error) {
+            el.errorPre.textContent = step.error;
+            el.errorPre.style.display = "block";
+          }
+        });
+      }
+
+      if (result.success) {
+        titleEl.textContent = "Reset Complete";
+        bannerEl.textContent = "Everything has been reset to match the live website.";
+        bannerEl.style.cssText += "display:block;background:#dcfce7;color:#166534;";
+      } else {
+        titleEl.textContent = "Reset Failed";
+        bannerEl.textContent = "Reset failed" + (result.error ? ": " + result.error : "");
+        bannerEl.style.cssText += "display:block;background:#fef2f2;color:#991b1b;";
+      }
+      actions.style.display = "";
+    })
+    .catch(() => {
+      titleEl.textContent = "Reset Failed";
+      bannerEl.textContent = "Could not reach the server. Is the portfolio manager still running?";
+      bannerEl.style.cssText += "display:block;background:#fef2f2;color:#991b1b;";
+      stepEls.forEach(el => {
+        el.icon.innerHTML = '<span style="color:#9ca3af;">&mdash;</span>';
+      });
+      actions.style.display = "";
+    });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const resetBtn = document.getElementById("resetBtn");
+  if (resetBtn) {
+    resetBtn.addEventListener("click", () => showResetConfirmModal());
+  }
+});
+
 /* === Deploy Flow === */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -43,12 +191,51 @@ function showPreflightErrorModal(preflight) {
       .map(w => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><span style="color:#eab308;font-size:18px;line-height:1;">&#x26A0;</span><span>${escapeHtml(w)}</span></div>`)
       .join("");
   }
-  showModal({
-    title: "Cannot deploy",
-    body: body,
-    confirmText: "Close",
-    showCancel: false,
+  body += '<hr style="margin:14px 0;border:none;border-top:1px solid #e5e7eb;">';
+  body += '<p style="margin:0;color:#6b7280;font-size:14px;">If things seem stuck, try resetting everything to match the live website.</p>';
+
+  const overlay = document.getElementById("modalOverlay");
+  const modal = document.createElement("div");
+  modal.className = "modal";
+
+  const titleEl = document.createElement("h2");
+  titleEl.className = "modal-title";
+  titleEl.textContent = "Cannot deploy";
+
+  const bodyEl = document.createElement("div");
+  bodyEl.className = "modal-body";
+  bodyEl.innerHTML = body;
+
+  const actions = document.createElement("div");
+  actions.className = "modal-actions";
+
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "btn-cancel";
+  closeBtn.textContent = "Close";
+  closeBtn.addEventListener("click", closeModal);
+  actions.appendChild(closeBtn);
+
+  const resetBtn = document.createElement("button");
+  resetBtn.className = "btn-danger";
+  resetBtn.textContent = "Reset Everything";
+  resetBtn.addEventListener("click", () => {
+    closeModal();
+    startNuclearReset();
   });
+  actions.appendChild(resetBtn);
+
+  modal.appendChild(titleEl);
+  modal.appendChild(bodyEl);
+  modal.appendChild(actions);
+  overlay.innerHTML = "";
+  overlay.appendChild(modal);
+  overlay.classList.add("active");
+
+  function onKeydown(e) {
+    if (e.key === "Escape") closeModal();
+  }
+  document.addEventListener("keydown", onKeydown);
+  overlay._keydownHandler = onKeydown;
 }
 
 function showDeployConfirmModal(preflight) {
@@ -238,6 +425,19 @@ function startDeploy(message, overlay, modal) {
         titleEl.textContent = "Deploy Failed";
         bannerEl.textContent = "Deploy failed" + (result.error ? ": " + result.error : "");
         bannerEl.style.cssText += "display:block;background:#fef2f2;color:#991b1b;";
+        // Offer the nuclear reset option on failure
+        const resetBtn = document.createElement("button");
+        resetBtn.className = "btn-danger";
+        resetBtn.textContent = "Reset Everything";
+        resetBtn.addEventListener("click", () => {
+          closeModal();
+          if (deployBtn) {
+            deployBtn.disabled = false;
+            deployBtn.textContent = "Deploy to Website";
+          }
+          startNuclearReset();
+        });
+        actions.appendChild(resetBtn);
       }
 
       actions.style.display = "";
