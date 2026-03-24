@@ -1,6 +1,6 @@
 # Madison's Art Portfolio
 
-Use GUI.py
+Use GUI.py.
 
 Source for [lunaportfolio.me](https://lunaportfolio.me). The site rebuilds itself every time you push to GitHub.
 
