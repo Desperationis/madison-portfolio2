@@ -361,10 +361,11 @@
   /* ============ Close button always tappable ============ */
   closeBtn.style.zIndex = '60';
   closeBtn.addEventListener('touchend', function (e) {
+    e.preventDefault();
     e.stopPropagation();
     reset();
     origClose();
-  }, { passive: true });
+  }, { passive: false });
 
   /* Prevent accidental lightbox-background-close after pan / zoom */
   img.addEventListener('click', function (e) {

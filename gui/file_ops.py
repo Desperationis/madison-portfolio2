@@ -1,5 +1,7 @@
 """Filesystem operations for categories and images."""
 
+from __future__ import annotations
+
 import logging
 import shutil
 import urllib.parse

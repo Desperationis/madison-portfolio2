@@ -1,5 +1,7 @@
 """Read/write/validate the portfolio.json manifest."""
 
+from __future__ import annotations
+
 import json
 import os
 import re

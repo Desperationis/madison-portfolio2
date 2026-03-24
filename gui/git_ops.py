@@ -1,5 +1,7 @@
 """Git status checks, preflight validation, and deploy pipeline."""
 
+from __future__ import annotations
+
 import logging
 import shutil
 import subprocess

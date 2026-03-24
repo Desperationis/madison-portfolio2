@@ -58,17 +58,15 @@ echo "Converting icon ..."
 ICONSET_DIR=$(mktemp -d)/icon.iconset
 mkdir -p "$ICONSET_DIR"
 
-# macOS iconset needs these exact sizes
-for size in 16 32 64 128 256 512; do
-    sips -z $size $size "$ICON_SRC" --out "$ICONSET_DIR/icon_${size}x${size}.png" > /dev/null 2>&1
+# macOS iconset needs these exact sizes (no 64 — not a valid iconset entry)
+for size in 16 32 128 256 512; do
+    sips -s format png -z $size $size "$ICON_SRC" --out "$ICONSET_DIR/icon_${size}x${size}.png" > /dev/null 2>&1
 done
 # Retina variants (@2x)
-for size in 16 32 128 256; do
+for size in 16 32 128 256 512; do
     double=$((size * 2))
-    sips -z $double $double "$ICON_SRC" --out "$ICONSET_DIR/icon_${size}x${size}@2x.png" > /dev/null 2>&1
+    sips -s format png -z $double $double "$ICON_SRC" --out "$ICONSET_DIR/icon_${size}x${size}@2x.png" > /dev/null 2>&1
 done
-# 512@2x = 1024
-sips -z 1024 1024 "$ICON_SRC" --out "$ICONSET_DIR/icon_512x512@2x.png" > /dev/null 2>&1
 
 iconutil -c icns "$ICONSET_DIR" -o "$APP_PATH/Contents/Resources/icon.icns"
 rm -rf "$(dirname "$ICONSET_DIR")"
