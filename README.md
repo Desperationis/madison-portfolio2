@@ -1,15 +1,29 @@
 # Madison's Art Portfolio
 
-Use GUI.py.
-
 Source for [lunaportfolio.me](https://lunaportfolio.me). The site rebuilds itself every time you push to GitHub.
 
-**Add art:** Drop images into a folder inside `art/`. Each folder = a gallery category on the site.
+## Quick Start
 
-**Add thumbnails (optional):** Put smaller copies in a `thumbnails/` subfolder with the same filenames. Makes pages load faster.
+```bash
+pip install -r requirements.txt
+python3 GUI.py
+```
 
-**Control order:** Add a number to the end of the filename (e.g. `drawing 1.jpg`, `drawing 2.jpg`).
+This opens a local editor at `127.0.0.1:5555` where you can manage everything from the browser — add/remove categories, upload and reorder images, change site settings, and deploy to GitHub Pages with one click.
 
-**Remove art:** Delete the file. Delete a whole folder to remove a category.
+## How It Works
 
-**Don't touch:** `latest/`, `.github/`, `utils.py`, `CLAUDE.md`, `.gitignore`, `CNAME` — these are managed automatically.
+A JSON manifest (`portfolio.json`) defines all portfolio content: which categories exist, their order, which images each contains, and category previews. The static site generator reads this manifest, builds HTML gallery pages with a lightbox viewer, and writes them to `latest/`. GitHub Actions regenerates and deploys the site on every push.
+
+## Managing Without the GUI
+
+You can also edit `portfolio.json` and the `art/` directory by hand:
+
+- **Add a category:** Create a folder in `art/`, add it to `portfolio.json`.
+- **Add images:** Drop files into `art/{category}/` and list them in the manifest. Put thumbnails in `art/{category}/thumbnails/` with matching filenames.
+- **Reorder:** Change the array order in `portfolio.json`.
+- **Rebuild:** Run `python3 -m portfolio` to regenerate HTML.
+
+## Don't Touch
+
+`latest/`, `.github/`, `CLAUDE.md`, `.gitignore`, `CNAME` — these are managed automatically.
