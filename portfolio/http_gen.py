@@ -1,5 +1,6 @@
 from .utils import *
 import html
+import urllib.parse
 import yaml
 from pathlib import Path
 
@@ -9,6 +10,37 @@ _CSS_DIR = Path(__file__).parent / "css"
 def _read_css(name: str) -> str:
     """Read a shared CSS file from portfolio/css/."""
     return (_CSS_DIR / name).read_text()
+
+
+def _og_image_url(site_url, cwd, image_path):
+    """Build an absolute URL for an image, for use in OG meta tags."""
+    if not image_path or not site_url:
+        return None
+    try:
+        rel = image_path.relative_to(cwd)
+    except ValueError:
+        return None
+    return site_url.rstrip('/') + '/' + urllib.parse.quote(rel.as_posix(), safe='/')
+
+
+def _meta_tags(*, title, description, url=None, image_url=None, site_name=None):
+    """Build OG and Twitter Card meta tag block."""
+    t = f'  <meta name="description" content="{html.escape(description)}">\n'
+    t += f'  <meta property="og:title" content="{html.escape(title)}">\n'
+    t += f'  <meta property="og:description" content="{html.escape(description)}">\n'
+    t += f'  <meta property="og:type" content="website">\n'
+    if url:
+        t += f'  <meta property="og:url" content="{html.escape(url)}">\n'
+    if image_url:
+        t += f'  <meta property="og:image" content="{html.escape(image_url)}">\n'
+    if site_name:
+        t += f'  <meta property="og:site_name" content="{html.escape(site_name)}">\n'
+    t += f'  <meta name="twitter:card" content="summary_large_image">\n'
+    t += f'  <meta name="twitter:title" content="{html.escape(title)}">\n'
+    t += f'  <meta name="twitter:description" content="{html.escape(description)}">\n'
+    if image_url:
+        t += f'  <meta name="twitter:image" content="{html.escape(image_url)}">\n'
+    return t
 
 
 def load_config():
@@ -44,6 +76,7 @@ def load_config():
 class IndexPage:
     def __init__(self, config):
         self.config = config
+        self._og_image_url = None
 
         # Build navigation HTML
         nav_items_html = ""
@@ -90,6 +123,11 @@ class IndexPage:
 """
 
     def set_categories(self, categories: list[Category], cwd: Path):
+        # Capture OG image from first category's full-size preview
+        if categories and getattr(categories[0], 'preview_path', None):
+            site_url = self.config.get('site_url', '')
+            self._og_image_url = _og_image_url(site_url, cwd, categories[0].preview_path)
+
         self.category_code += """
 <main class="wrap" id="work">
     <section class="grid" aria-label="Portfolio categories">
@@ -102,7 +140,7 @@ class IndexPage:
             self.category_code += f"""
       <a class="card" href="latest/{html.escape(c.name)}.html">
         <figure class="thumb">
-          <img src="{html.escape(thumb_src)}" alt="{html.escape(c.name)}"/>
+          <img src="{html.escape(thumb_src)}" alt="{html.escape(c.name)}" loading="lazy"/>
         </figure>
         <div class="label">{html.escape(c.name)}</div>
       </a>
@@ -115,7 +153,18 @@ class IndexPage:
 
 
     def get_content(self):
-        return self.header + self.category_code + self.footer
+        site_url = self.config.get('site_url', '')
+        description = self.config.get('site_description', '')
+        title = f"{self.config['site_name']} - Work"
+        meta = _meta_tags(
+            title=title,
+            description=description,
+            url=site_url,
+            image_url=self._og_image_url,
+            site_name=self.config['site_name'],
+        )
+        header = self.header.replace('</head>', f'{meta}</head>', 1)
+        return header + self.category_code + self.footer
 
 
 
@@ -132,6 +181,9 @@ class CategoryPage:
             if url.startswith('/'):
                 # Remove leading slash and add ../ for relative path from /latest/
                 url = '../' + url.lstrip('/')
+            elif not url.startswith(('http://', 'https://', '#', 'mailto:')):
+                # Relative path needs ../ since category pages live in /latest/
+                url = '../' + url
             nav_items_html += f'<a href="{html.escape(url)}" role="menuitem">{html.escape(item["label"])}</a>\n        '
 
         category_css = _read_css("category.css")
@@ -168,6 +220,20 @@ class CategoryPage:
         self.cwd = cwd
         self.art_code = ""
 
+        # Build OG meta tags for this category
+        site_url = self.config.get('site_url', '')
+        description = self.config.get('site_description', '')
+        cat_description = f"{category.name} — {description}" if description else category.name
+        cat_url = f"{site_url.rstrip('/')}/latest/{urllib.parse.quote(category.name)}.html" if site_url else ''
+        og_img = _og_image_url(site_url, cwd, getattr(category, 'preview_path', None))
+        self._meta = _meta_tags(
+            title=f"{self.config['site_name']} - {category.name}",
+            description=cat_description,
+            url=cat_url,
+            image_url=og_img,
+            site_name=self.config['site_name'],
+        )
+
         self._gen_art_code()
 
         self.footer = f"""
@@ -194,7 +260,8 @@ class CategoryPage:
     const lightbox = document.getElementById('lightbox');
     const lightboxImg = document.getElementById('lightboxImg');
     let i = 0;
-    function openAt(idx){{i = (idx + gallery.length) % gallery.length;lightboxImg.src = gallery[i].getAttribute('data-full');lightbox.classList.add('open');document.body.style.overflow = 'hidden';}}
+    function preloadAdj(){{[-1,1].forEach(d=>{{const el=gallery[(i+d+gallery.length)%gallery.length];if(el)new Image().src=el.getAttribute('data-full');}})}}
+    function openAt(idx){{i = (idx + gallery.length) % gallery.length;lightboxImg.src = gallery[i].getAttribute('data-full');lightbox.classList.add('open');document.body.style.overflow = 'hidden';preloadAdj();}}
     function close(){{lightbox.classList.remove('open');document.body.style.overflow = '';lightboxImg.src = ''}}
     function next(){{openAt(i+1)}}
     function prev(){{openAt(i-1)}}
@@ -232,7 +299,7 @@ class CategoryPage:
                 continue
             self.art_code += f"""
       <button class="cell tile" data-full="{html.escape(full_path)}">
-        <img alt="{html.escape(art.path.stem)}" src="{html.escape(thumb_path)}">
+        <img alt="{html.escape(art.path.stem)}" src="{html.escape(thumb_path)}" loading="lazy">
       </button>
 """
 
@@ -243,4 +310,5 @@ class CategoryPage:
 
 
     def get_content(self):
-        return self.header + self.art_code + self.footer
+        header = self.header.replace('</head>', f'{self._meta}</head>', 1)
+        return header + self.art_code + self.footer

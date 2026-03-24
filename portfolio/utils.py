@@ -48,6 +48,14 @@ class Category(DebugEasy):
         elif self.art_pieces:
             self.thumbnail_p = self.art_pieces[0].get_thumbnail_p()
 
+        # Full-size preview image (for OG meta tags)
+        if preview_filename:
+            self.preview_path = cat_dir / preview_filename
+        elif self.art_pieces:
+            self.preview_path = self.art_pieces[0].path
+        else:
+            self.preview_path = None
+
 
 def dot_relative(parent: Path, child: Path) -> str | None:
     try:

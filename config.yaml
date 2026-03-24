@@ -1,4 +1,6 @@
 site_name: MADISON
+site_url: https://lunaportfolio.me
+site_description: Portfolio of Madison Luna — illustration, character design, comics, and storyboard art.
 navigation:
 - label: Work
   url: /

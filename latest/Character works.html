@@ -66,6 +66,17 @@
 
     footer{max-width:var(--maxw);margin:24px auto 56px;padding:0 24px;color:#9aa1ad;font-size:13px;text-align:center}
   </style>
+  <meta name="description" content="Character works — Portfolio of Madison Luna — illustration, character design, comics, and storyboard art.">
+  <meta property="og:title" content="MADISON - Character works">
+  <meta property="og:description" content="Character works — Portfolio of Madison Luna — illustration, character design, comics, and storyboard art.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://lunaportfolio.me/latest/Character%20works.html">
+  <meta property="og:image" content="https://lunaportfolio.me/art/Character%20works/ART%20317%202_0.jpg">
+  <meta property="og:site_name" content="MADISON">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="MADISON - Character works">
+  <meta name="twitter:description" content="Character works — Portfolio of Madison Luna — illustration, character design, comics, and storyboard art.">
+  <meta name="twitter:image" content="https://lunaportfolio.me/art/Character%20works/ART%20317%202_0.jpg">
 </head>
 <body>
   <!-- Top Navigation -->
@@ -74,7 +85,7 @@
       <div class="brand" aria-label="Site title"><a href="../index.html">MADISON</a></div>
       <div class="menu" role="menubar">
         <a href="../" role="menuitem">Work</a>
-        <a href="latest/resume.pdf" role="menuitem">Resume</a>
+        <a href="../latest/resume.pdf" role="menuitem">Resume</a>
         
       </div>
     </nav>
@@ -89,31 +100,31 @@
     <div class="grid" id="gallery">
 
       <button class="cell tile" data-full="/art/Character%20works/ART%20317%202_0.jpg">
-        <img alt="ART 317 2_0" src="/art/Character%20works/ART%20317%202_0.jpg">
+        <img alt="ART 317 2_0" src="/art/Character%20works/ART%20317%202_0.jpg" loading="lazy">
       </button>
 
       <button class="cell tile" data-full="/art/Character%20works/River%20Character%20Line%20Up_1.jpg">
-        <img alt="River Character Line Up_1" src="/art/Character%20works/River%20Character%20Line%20Up_1.jpg">
+        <img alt="River Character Line Up_1" src="/art/Character%20works/River%20Character%20Line%20Up_1.jpg" loading="lazy">
       </button>
 
       <button class="cell tile" data-full="/art/Character%20works/ART%20317%203.jpg">
-        <img alt="ART 317 3" src="/art/Character%20works/ART%20317%203.jpg">
+        <img alt="ART 317 3" src="/art/Character%20works/ART%20317%203.jpg" loading="lazy">
       </button>
 
       <button class="cell tile" data-full="/art/Character%20works/ART%20317%204.jpg">
-        <img alt="ART 317 4" src="/art/Character%20works/ART%20317%204.jpg">
+        <img alt="ART 317 4" src="/art/Character%20works/ART%20317%204.jpg" loading="lazy">
       </button>
 
       <button class="cell tile" data-full="/art/Character%20works/ART%20317%205.jpg">
-        <img alt="ART 317 5" src="/art/Character%20works/ART%20317%205.jpg">
+        <img alt="ART 317 5" src="/art/Character%20works/ART%20317%205.jpg" loading="lazy">
       </button>
 
       <button class="cell tile" data-full="/art/Character%20works/Daisy%20Sketch.jpg">
-        <img alt="Daisy Sketch" src="/art/Character%20works/Daisy%20Sketch.jpg">
+        <img alt="Daisy Sketch" src="/art/Character%20works/Daisy%20Sketch.jpg" loading="lazy">
       </button>
 
       <button class="cell tile" data-full="/art/Character%20works/Lucas%20Character%20Line%20Up.jpg">
-        <img alt="Lucas Character Line Up" src="/art/Character%20works/Lucas%20Character%20Line%20Up.jpg">
+        <img alt="Lucas Character Line Up" src="/art/Character%20works/Lucas%20Character%20Line%20Up.jpg" loading="lazy">
       </button>
 
     </div>
@@ -142,7 +153,8 @@
     const lightbox = document.getElementById('lightbox');
     const lightboxImg = document.getElementById('lightboxImg');
     let i = 0;
-    function openAt(idx){i = (idx + gallery.length) % gallery.length;lightboxImg.src = gallery[i].getAttribute('data-full');lightbox.classList.add('open');document.body.style.overflow = 'hidden';}
+    function preloadAdj(){[-1,1].forEach(d=>{const el=gallery[(i+d+gallery.length)%gallery.length];if(el)new Image().src=el.getAttribute('data-full');})}
+    function openAt(idx){i = (idx + gallery.length) % gallery.length;lightboxImg.src = gallery[i].getAttribute('data-full');lightbox.classList.add('open');document.body.style.overflow = 'hidden';preloadAdj();}
     function close(){lightbox.classList.remove('open');document.body.style.overflow = '';lightboxImg.src = ''}
     function next(){openAt(i+1)}
     function prev(){openAt(i-1)}

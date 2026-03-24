@@ -66,6 +66,17 @@
 
     footer{max-width:var(--maxw);margin:24px auto 56px;padding:0 24px;color:#9aa1ad;font-size:13px;text-align:center}
   </style>
+  <meta name="description" content="Finished Pieces — Portfolio of Madison Luna — illustration, character design, comics, and storyboard art.">
+  <meta property="og:title" content="MADISON - Finished Pieces">
+  <meta property="og:description" content="Finished Pieces — Portfolio of Madison Luna — illustration, character design, comics, and storyboard art.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://lunaportfolio.me/latest/Finished%20Pieces.html">
+  <meta property="og:image" content="https://lunaportfolio.me/art/Finished%20Pieces/Art%20103%20Historical%20Images_2.jpg">
+  <meta property="og:site_name" content="MADISON">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="MADISON - Finished Pieces">
+  <meta name="twitter:description" content="Finished Pieces — Portfolio of Madison Luna — illustration, character design, comics, and storyboard art.">
+  <meta name="twitter:image" content="https://lunaportfolio.me/art/Finished%20Pieces/Art%20103%20Historical%20Images_2.jpg">
 </head>
 <body>
   <!-- Top Navigation -->
@@ -74,7 +85,7 @@
       <div class="brand" aria-label="Site title"><a href="../index.html">MADISON</a></div>
       <div class="menu" role="menubar">
         <a href="../" role="menuitem">Work</a>
-        <a href="latest/resume.pdf" role="menuitem">Resume</a>
+        <a href="../latest/resume.pdf" role="menuitem">Resume</a>
         
       </div>
     </nav>
@@ -89,23 +100,23 @@
     <div class="grid" id="gallery">
 
       <button class="cell tile" data-full="/art/Finished%20Pieces/WINGSPAN%20COVER%202.0_3.jpg">
-        <img alt="WINGSPAN COVER 2.0_3" src="/art/Finished%20Pieces/thumbnails/WINGSPAN%20COVER%202.0_3.jpg">
+        <img alt="WINGSPAN COVER 2.0_3" src="/art/Finished%20Pieces/thumbnails/WINGSPAN%20COVER%202.0_3.jpg" loading="lazy">
       </button>
 
       <button class="cell tile" data-full="/art/Finished%20Pieces/Witch%20Oc%20Final_1.jpg">
-        <img alt="Witch Oc Final_1" src="/art/Finished%20Pieces/thumbnails/Witch%20Oc%20Final_1.jpg">
+        <img alt="Witch Oc Final_1" src="/art/Finished%20Pieces/thumbnails/Witch%20Oc%20Final_1.jpg" loading="lazy">
       </button>
 
       <button class="cell tile" data-full="/art/Finished%20Pieces/Art%20103%20Historical%20Images_2.jpg">
-        <img alt="Art 103 Historical Images_2" src="/art/Finished%20Pieces/thumbnails/Art%20103%20Historical%20Images_2.jpg">
+        <img alt="Art 103 Historical Images_2" src="/art/Finished%20Pieces/thumbnails/Art%20103%20Historical%20Images_2.jpg" loading="lazy">
       </button>
 
       <button class="cell tile" data-full="/art/Finished%20Pieces/Art%20103%20Project_4.jpg">
-        <img alt="Art 103 Project_4" src="/art/Finished%20Pieces/thumbnails/Art%20103%20Project_4.jpg">
+        <img alt="Art 103 Project_4" src="/art/Finished%20Pieces/thumbnails/Art%20103%20Project_4.jpg" loading="lazy">
       </button>
 
       <button class="cell tile" data-full="/art/Finished%20Pieces/Lucas%20Eve.%20Illustration_5.jpg">
-        <img alt="Lucas Eve. Illustration_5" src="/art/Finished%20Pieces/thumbnails/Lucas%20Eve.%20Illustration_5.jpg">
+        <img alt="Lucas Eve. Illustration_5" src="/art/Finished%20Pieces/thumbnails/Lucas%20Eve.%20Illustration_5.jpg" loading="lazy">
       </button>
 
     </div>
@@ -134,7 +145,8 @@
     const lightbox = document.getElementById('lightbox');
     const lightboxImg = document.getElementById('lightboxImg');
     let i = 0;
-    function openAt(idx){i = (idx + gallery.length) % gallery.length;lightboxImg.src = gallery[i].getAttribute('data-full');lightbox.classList.add('open');document.body.style.overflow = 'hidden';}
+    function preloadAdj(){[-1,1].forEach(d=>{const el=gallery[(i+d+gallery.length)%gallery.length];if(el)new Image().src=el.getAttribute('data-full');})}
+    function openAt(idx){i = (idx + gallery.length) % gallery.length;lightboxImg.src = gallery[i].getAttribute('data-full');lightbox.classList.add('open');document.body.style.overflow = 'hidden';preloadAdj();}
     function close(){lightbox.classList.remove('open');document.body.style.overflow = '';lightboxImg.src = ''}
     function next(){openAt(i+1)}
     function prev(){openAt(i-1)}
