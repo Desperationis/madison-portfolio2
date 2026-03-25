@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MADISON - Environmental Design</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#ffffff;
+      --ink:#0d0d0d;
+      --muted:#6b7280;
+      --accent:#5AA7FF;
+      --maxw:1120px;
+      --gap:18px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:"Montserrat",system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;line-height:1.5}
+    a{color:inherit;text-decoration:none}
+
+    /* --- Topbar (copied to match index.html) --- */
+    .topbar{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.9);backdrop-filter:saturate(140%) blur(8px);border-bottom:1px solid #eaeaea}
+    .nav{max-width:var(--maxw);margin:0 auto;padding:18px 24px;display:flex;align-items:center;justify-content:space-between}
+    .brand{letter-spacing:.35em;font-weight:600}
+    .menu{display:flex;gap:26px;align-items:center;font-size:14px;color:var(--muted)}
+
+    /* Page title */
+    .hero{max-width:var(--maxw);margin:24px auto 6px;padding:0 24px}
+    .hero h1{font-family:"Playfair Display",serif;font-size:38px;margin:18px 0 6px}
+
+    /* Gallery grid like provided mock */
+    .wrap{max-width:var(--maxw);margin:14px auto 80px;padding:0 24px}
+    .grid{display:grid;gap:var(--gap);grid-template-columns:repeat(12,1fr)}
+    .cell{grid-column:span 4}
+    @media (max-width: 980px){.cell{grid-column:span 6}}
+    @media (max-width: 640px){
+      .cell{grid-column:span 6}
+      :root{--gap:12px}
+      .wrap{margin:8px auto 40px;padding:0 12px}
+      .hero{margin:16px auto 4px;padding:0 16px}
+      .hero h1{font-size:26px;margin:12px 0 4px}
+      .nav{padding:14px 16px}
+      footer{margin:16px auto 36px;padding:0 16px}
+      /* Hide prev/next buttons on mobile — swipe handles navigation */
+      .lightbox__prev,.lightbox__next{display:none}
+      .lightbox__close{width:48px;height:48px;top:12px;right:12px}
+      .lightbox__img{max-height:80vh;border-radius:4px}
+    }
+
+    .tile{position:relative;display:block;width:100%;aspect-ratio:1/1;border-radius:10px;overflow:hidden;background:#f3f4f6;box-shadow:0 10px 25px rgba(0,0,0,.06);cursor:pointer;border:none}
+    .tile img{width:100%;height:100%;display:block;object-fit:cover;transition:transform .45s ease, filter .45s ease}
+    .tile:hover img{transform:scale(1.05);filter:contrast(1.05)}
+
+    /* Lightbox overlay */
+    .lightbox{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(15,15,18,.85);backdrop-filter:blur(4px);z-index:50}
+    .lightbox.open{display:flex}
+    .lightbox__img{max-width:min(92vw,1400px);max-height:86vh;border-radius:8px;box-shadow:0 15px 45px rgba(0,0,0,.45);will-change:transform}
+    .lightbox__btn{position:absolute;top:50%;transform:translateY(-50%);border:none;background:rgba(255,255,255,.85);width:48px;height:48px;border-radius:999px;display:grid;place-items:center;cursor:pointer}
+    .lightbox__btn:focus{outline:2px solid var(--accent)}
+    .lightbox__prev{left:24px}
+    .lightbox__next{right:24px}
+    .lightbox__close{position:absolute;top:18px;right:18px;border:none;background:rgba(255,255,255,.9);width:42px;height:42px;border-radius:999px;display:grid;place-items:center;cursor:pointer;z-index:60}
+
+    footer{max-width:var(--maxw);margin:24px auto 56px;padding:0 24px;color:#9aa1ad;font-size:13px;text-align:center}
+  </style>
+  <meta name="description" content="Environmental Design — Portfolio of Madison Luna — illustration, character design, comics, and storyboard art.">
+  <meta property="og:title" content="MADISON - Environmental Design">
+  <meta property="og:description" content="Environmental Design — Portfolio of Madison Luna — illustration, character design, comics, and storyboard art.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://lunaportfolio.me/latest/Environmental%20Design.html">
+  <meta property="og:image" content="https://lunaportfolio.me/art/Environmental%20Design/Daisy%20Illustration%20Flying_2.jpg">
+  <meta property="og:site_name" content="MADISON">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="MADISON - Environmental Design">
+  <meta name="twitter:description" content="Environmental Design — Portfolio of Madison Luna — illustration, character design, comics, and storyboard art.">
+  <meta name="twitter:image" content="https://lunaportfolio.me/art/Environmental%20Design/Daisy%20Illustration%20Flying_2.jpg">
+</head>
+<body>
+  <!-- Top Navigation -->
+  <header class="topbar" role="banner">
+    <nav class="nav" aria-label="Primary">
+      <div class="brand" aria-label="Site title"><a href="../index.html">MADISON</a></div>
+      <div class="menu" role="menubar">
+        <a href="../" role="menuitem">Work</a>
+        <a href="../latest/resume.pdf" role="menuitem">Resume</a>
+        
+      </div>
+    </nav>
+  </header>
+
+  <!-- Header / breadcrumb for category -->
+  <section class="hero">
+    <h1 id="categoryTitle">Environmental Design</h1>
+  </section>
+
+  <main class="wrap">
+    <div class="grid" id="gallery">
+
+      <button class="cell tile" data-full="/art/Environmental%20Design/Daisy%20Illustration%20Flying_2.jpg">
+        <img alt="Daisy Illustration Flying_2" src="/art/Environmental%20Design/thumbnails/Daisy%20Illustration%20Flying_2.jpg" loading="lazy">
+      </button>
+
+      <button class="cell tile" data-full="/art/Environmental%20Design/PROJECT%203%20Interior%20design%20w%20REVISIONS.jpg">
+        <img alt="PROJECT 3 Interior design w REVISIONS" src="/art/Environmental%20Design/thumbnails/PROJECT%203%20Interior%20design%20w%20REVISIONS.jpg" loading="lazy">
+      </button>
+
+      <button class="cell tile" data-full="/art/Environmental%20Design/ATTIC%20FINAL%20copy.jpg">
+        <img alt="ATTIC FINAL copy" src="/art/Environmental%20Design/thumbnails/ATTIC%20FINAL%20copy.jpg" loading="lazy">
+      </button>
+
+      <button class="cell tile" data-full="/art/Environmental%20Design/FINAL%20BASEMENT%203%3A22%3A26%20copy.jpg">
+        <img alt="FINAL BASEMENT 3:22:26 copy" src="/art/Environmental%20Design/thumbnails/FINAL%20BASEMENT%203%3A22%3A26%20copy.jpg" loading="lazy">
+      </button>
+
+      <button class="cell tile" data-full="/art/Environmental%20Design/Luna%20Madison%20Treehouse%20interior%20FINAL%20copy.jpg">
+        <img alt="Luna Madison Treehouse interior FINAL copy" src="/art/Environmental%20Design/thumbnails/Luna%20Madison%20Treehouse%20interior%20FINAL%20copy.jpg" loading="lazy">
+      </button>
+
+    </div>
+  </main>
+
+
+  <footer>
+    © <span id="y"></span> Madison Luna
+  </footer>
+
+  <!-- Lightbox overlay -->
+  <div class="lightbox" id="lightbox">
+    <img class="lightbox__img" id="lightboxImg" alt="Expanded artwork" />
+    <button class="lightbox__btn lightbox__prev" id="prevBtn">&#10094;</button>
+    <button class="lightbox__btn lightbox__next" id="nextBtn">&#10095;</button>
+    <button class="lightbox__close" id="closeBtn">&#10005;</button>
+  </div>
+
+  <script>
+    document.getElementById('y').textContent = new Date().getFullYear();
+    const params = new URLSearchParams(location.search);
+    const titleParam = params.get('title');
+    if (titleParam) document.getElementById('categoryTitle').textContent = decodeURIComponent(titleParam);
+
+    const gallery = Array.from(document.querySelectorAll('.tile'));
+    const lightbox = document.getElementById('lightbox');
+    const lightboxImg = document.getElementById('lightboxImg');
+    let i = 0;
+    function preloadAdj(){[-1,1].forEach(d=>{const el=gallery[(i+d+gallery.length)%gallery.length];if(el)new Image().src=el.getAttribute('data-full');})}
+    function openAt(idx){i = (idx + gallery.length) % gallery.length;lightboxImg.src = gallery[i].getAttribute('data-full');lightbox.classList.add('open');document.body.style.overflow = 'hidden';preloadAdj();}
+    function close(){lightbox.classList.remove('open');document.body.style.overflow = '';lightboxImg.src = ''}
+    function next(){openAt(i+1)}
+    function prev(){openAt(i-1)}
+    gallery.forEach((el, idx)=>{el.addEventListener('click', ()=>openAt(idx));});
+    document.getElementById('nextBtn').addEventListener('click', next);
+    document.getElementById('prevBtn').addEventListener('click', prev);
+    document.getElementById('closeBtn').addEventListener('click', close);
+    lightbox.addEventListener('click', (e)=>{ if(e.target===lightbox) close(); });
+    window.addEventListener('keydown', (e)=>{if(!lightbox.classList.contains('open')) return;if(e.key==='Escape') close();if(e.key==='ArrowRight') next();if(e.key==='ArrowLeft') prev();});
+  </script>
+
+  <!-- Mobile: Procreate-style pinch/zoom/pan/swipe viewer -->
+  <script>
+/* ============================================================
+   Mobile Viewer — Procreate-style pinch / zoom / pan / swipe
+   Only activates on touch-capable devices when the lightbox
+   is open.  Completely replaces the simple swipe handler.
+
+   Uses default transform-origin (center) so scale(s) zooms
+   from the image center, and translate(tx,ty) shifts the
+   center by that amount.
+   ============================================================ */
+(function () {
+  if (!('ontouchstart' in window || navigator.maxTouchPoints > 0)) return;
+
+  var lightbox = document.getElementById('lightbox');
+  var img      = document.getElementById('lightboxImg');
+  var closeBtn = document.getElementById('closeBtn');
+
+  /* ---- transform state ---- */
+  var scale = 1, tx = 0, ty = 0;
+
+  /* ---- pinch snapshot (captured once at pinch start) ---- */
+  var pinching = false;
+  var ps = null; /* { scale, tx, ty, dist, midX, midY, bcx, bcy } */
+
+  /* ---- pan / swipe state ---- */
+  var panX = 0, panY = 0;
+  var swX0 = 0, swY0 = 0, swT0 = 0;
+  var moved = false;
+
+  /* ============ helpers ============ */
+  function d2(a, b) {
+    return Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+  }
+  function mid(a, b) {
+    return { x: (a.clientX + b.clientX) / 2,
+             y: (a.clientY + b.clientY) / 2 };
+  }
+  function zoomed() { return scale > 1.02; }
+
+  function apply() {
+    img.style.transform =
+      'translate(' + tx + 'px,' + ty + 'px) scale(' + scale + ')';
+  }
+
+  /* Base center = screen position of image center when tx=ty=0.
+     Works regardless of current transform.                       */
+  function baseCenter() {
+    var r = img.getBoundingClientRect();
+    return { x: (r.left + r.right) / 2 - tx,
+             y: (r.top + r.bottom) / 2 - ty };
+  }
+
+  function clamp() {
+    if (scale <= 1) { tx = 0; ty = 0; return; }
+    var sw = img.offsetWidth  * scale;
+    var sh = img.offsetHeight * scale;
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var mxT = Math.max(0, (sw - vw) / 2);
+    var myT = Math.max(0, (sh - vh) / 2);
+    tx = Math.max(-mxT, Math.min(mxT, tx));
+    ty = Math.max(-myT, Math.min(myT, ty));
+  }
+
+  function snapBack(cb) {
+    scale = 1; tx = 0; ty = 0;
+    img.style.transition = 'transform .25s cubic-bezier(.25,.46,.45,.94)';
+    apply();
+    setTimeout(function () { img.style.transition = ''; if (cb) cb(); }, 260);
+  }
+
+  function reset() {
+    scale = 1; tx = 0; ty = 0;
+    img.style.transition = '';
+    apply();
+  }
+
+  /* ============ disable browser gestures inside lightbox ============ */
+  lightbox.style.touchAction = 'none';
+
+  /* ============ TOUCHSTART ============ */
+  lightbox.addEventListener('touchstart', function (e) {
+    if (!lightbox.classList.contains('open')) return;
+
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      pinching = true;
+      var bc = baseCenter();
+      var m  = mid(e.touches[0], e.touches[1]);
+      ps = {
+        scale: scale, tx: tx, ty: ty,
+        dist:  d2(e.touches[0], e.touches[1]),
+        midX:  m.x,  midY:  m.y,
+        bcx:   bc.x, bcy:   bc.y
+      };
+    } else if (e.touches.length === 1) {
+      pinching = false;
+      moved    = false;
+      panX = e.touches[0].clientX;
+      panY = e.touches[0].clientY;
+      swX0 = panX; swY0 = panY; swT0 = Date.now();
+    }
+  }, { passive: false });
+
+  /* ============ TOUCHMOVE ============ */
+  lightbox.addEventListener('touchmove', function (e) {
+    if (!lightbox.classList.contains('open')) return;
+
+    /* --- two-finger pinch-to-zoom --- */
+    if (e.touches.length === 2 && ps) {
+      e.preventDefault();
+      var d  = d2(e.touches[0], e.touches[1]);
+      var ns = Math.max(0.5, Math.min(10, ps.scale * (d / ps.dist)));
+      var r  = ns / ps.scale;           /* ratio vs start-of-pinch */
+      var m  = mid(e.touches[0], e.touches[1]);
+
+      /* Focal-point zoom: keep the initial midpoint fixed on the
+         same image pixel.  Using transform-origin: center, tx/ty
+         represent the offset of the image center from its natural
+         flexbox-centered position.
+
+         Formula:  tx_new = tx0 + (1-r) * (focalScreenX - baseCenterX - tx0)
+         …plus two-finger pan drift.                                        */
+      tx = ps.tx + (1 - r) * (ps.midX - ps.bcx - ps.tx)
+                 + (m.x - ps.midX);
+      ty = ps.ty + (1 - r) * (ps.midY - ps.bcy - ps.ty)
+                 + (m.y - ps.midY);
+      scale = ns;
+      clamp();
+      apply();
+      return;
+    }
+
+    /* --- single-finger --- */
+    if (e.touches.length === 1 && !pinching) {
+      var dx = e.touches[0].clientX - panX;
+      var dy = e.touches[0].clientY - panY;
+
+      if (Math.abs(e.touches[0].clientX - swX0) > 8 ||
+          Math.abs(e.touches[0].clientY - swY0) > 8) {
+        moved = true;
+      }
+
+      if (zoomed()) {
+        /* Panning */
+        e.preventDefault();
+        tx += dx; ty += dy;
+        panX = e.touches[0].clientX;
+        panY = e.touches[0].clientY;
+        clamp();
+        apply();
+      } else {
+        /* Track for swipe detection — don't preventDefault so the
+           browser can still do its own scroll if we bail.          */
+        panX = e.touches[0].clientX;
+        panY = e.touches[0].clientY;
+      }
+    }
+  }, { passive: false });
+
+  /* ============ TOUCHEND ============ */
+  lightbox.addEventListener('touchend', function (e) {
+    if (!lightbox.classList.contains('open')) return;
+
+    /* Went from two fingers to one → transition to pan */
+    if (e.touches.length === 1) {
+      pinching = false;
+      ps = null;
+      panX = e.touches[0].clientX;
+      panY = e.touches[0].clientY;
+      return;
+    }
+    if (e.touches.length > 0) return;
+
+    /* All fingers lifted */
+    pinching = false;
+    ps = null;
+
+    /* Below 1× → snap back, but check for swipe first */
+    if (scale < 1.02) {
+      var sdx = e.changedTouches[0].clientX - swX0;
+      var sdy = e.changedTouches[0].clientY - swY0;
+      var dt  = Date.now() - swT0;
+      if (Math.abs(sdx) > 50 &&
+          Math.abs(sdx) > Math.abs(sdy) * 1.3 &&
+          dt < 500) {
+        reset();
+        if (sdx < 0) next(); else prev();
+      } else {
+        snapBack();
+      }
+      return;
+    }
+
+    /* Still zoomed — animate to clamped position */
+    clamp();
+    img.style.transition = 'transform .15s ease-out';
+    apply();
+    setTimeout(function () { img.style.transition = ''; }, 160);
+  }, { passive: true });
+
+  /* ============ Hook into lightbox navigation ============ */
+  var origOpenAt = openAt;
+  openAt = function (idx) { reset(); origOpenAt(idx); };
+
+  var origClose = close;
+  close = function () { reset(); origClose(); };
+
+  /* ============ Close button always tappable ============ */
+  closeBtn.style.zIndex = '60';
+  closeBtn.addEventListener('touchend', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    reset();
+    origClose();
+  }, { passive: false });
+
+  /* Prevent accidental lightbox-background-close after pan / zoom */
+  img.addEventListener('click', function (e) {
+    if (zoomed() || moved) e.stopPropagation();
+  }, true);
+
+})();
+
+  </script>
+</body>
+</html>
